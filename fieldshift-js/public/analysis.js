@@ -8,6 +8,8 @@ const N_PRICE_EUR_KG = 1.0;      // rough nitrogen fertilizer price
 const FAIL_YIELD_SHARE = 0.5;    // failed season = half the normal yield
 const ENOUGH_WATER_SHARE = 0.75; // rain + soil water must cover 75% of crop need
 const COVER_WATER_USE_MM = 30;   // spring moisture a cover crop takes from the next crop
+const SAME_CROP_PENALTY = 0.15;
+const SWITCH_FACTOR = { easy: 1, medium: 0.95, hard: 0.82 }; // hard-to-adopt crops count less unless already grown  // a crop after itself yields ~15% less and fails more often (diseases, pests)
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
@@ -93,8 +95,13 @@ export function recentVsNormal(recent, sum) {
 
 // =============== 2. FIELD (Sentinel-2) ===============
 
+// A 10-day period counts as bare soil when the soil index is high and there's little green cover.
+// Thresholds calibrated on real Sentinel-2 data from Dobrudzha fields.
+const isBare = r => r.bsi > 0.05 && r.ndvi < 0.25;
+
 export function fieldSummary(rows) {
   if (!rows?.length) return null;
+  rows = rows.map(r => ({ ...r, bare: isBare(r) ? 1 : 0 }));
   const now = Date.now(), yearAgo = now - 365 * 864e5;
   const last = rows.filter(r => new Date(r.date) >= yearAgo);
   const earlier = rows.filter(r => new Date(r.date) < yearAgo);
@@ -254,17 +261,37 @@ function bareMonthsPerYear(plan, crop) {
   return gaps / plan.length;
 }
 
-export function scoreRotations({ rotations, crops, cy, cyFuture, soil, field, weights }) {
+// All priorities the farmer can pick. Keys match the score fields on each rotation.
+export const PRIORITIES = {
+  water: { label: 'water fit', chip: '💧 Save moisture', hint: 'Crops that get by on the rain your field actually gets' },
+  erosion: { label: 'erosion protection', chip: '🌬️ Stop erosion', hint: 'Keep the soil covered so wind and rain don\'t carry it away' },
+  income: { label: 'income', chip: '💶 More income', hint: 'Higher typical profit per hectare' },
+  soil: { label: 'soil health', chip: '🌱 Healthier soil', hint: 'Legumes, cover crops and variety build organic matter' },
+  risk: { label: 'harvest reliability', chip: '🛡️ Fewer bad years', hint: 'Crops that survived most of the past 25 years of weather' },
+  cost: { label: 'low costs', chip: '🧾 Lower costs', hint: 'Less money on fertilizer, seed and fuel' },
+  labor: { label: 'less work', chip: '⏱️ Less work', hint: 'Crops that need less time and labour' },
+  machinery: { label: 'fits your machinery', chip: '🚜 My machinery', hint: 'Use the equipment you already have' },
+  market: { label: 'easy to sell', chip: '🏪 Easy to sell', hint: 'Crops with buyers nearby and a steady market' },
+  forage: { label: 'animal feed', chip: '🐄 Animal feed', hint: 'Grow feed or hay for your animals' },
+  pests: { label: 'breaks pest cycles', chip: '🐛 Break pests & diseases', hint: 'Alternate crop families so pests and diseases can\'t build up' },
+  subsidies: { label: 'EU eco-scheme fit', chip: '🇪🇺 EU subsidies', hint: 'Diversification, legumes and winter cover often qualify for eco-schemes' },
+};
+const LABELS = Object.fromEntries(Object.entries(PRIORITIES).map(([k, v]) => [k, v.label]));
+
+export function scoreRotations({ rotations, crops, cy, cyFuture, soil, field, weights, known = [] }) {
   const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
-  const results = Object.entries(rotations).map(([name, { plan, type }]) => {
+  const results = Object.entries(rotations).map(([name, { plan, type, recommend = true }]) => {
     const items = plan.map(split);
     const mains = items.map(i => i.main);
     const unique = [...new Set(mains)];
     const covers = items.filter(i => i.cover).length;
+    const everything = [...mains, ...items.filter(i => i.cover).map(i => i.cover)];
 
-    const okShare = (data, item) => mean(data.years.map(y => (itemOk(data, item, y) ? 1 : 0)));
-    const risk = mean(plan.map(it => okShare(cy, it))) * 100;
-    const riskFuture = mean(plan.map(it => okShare(cyFuture, it))) * 100;
+    // rotation effect: same crop after itself (not perennials) loses yield and reliability
+    const afterItself = idx => mains[idx] === items.at(idx - 1).main && !crop[mains[idx]].perennial;
+    const okShare = (data, item, idx) => mean(data.years.map(y => (itemOk(data, item, y) ? 1 : 0))) * (afterItself(idx) ? 1 - SAME_CROP_PENALTY : 1);
+    const risk = mean(plan.map((it, idx) => okShare(cy, it, idx))) * 100;
+    const riskFuture = mean(plan.map((it, idx) => okShare(cyFuture, it, idx))) * 100;
 
     const avgRain = c => mean(cy.rows.filter(r => r.crop === c).map(r => r.seasonRain));
     const water = mean(mains.map(c => Math.min(1, (avgRain(c) + soil.awcMm) / crop[c].waterNeedMm))) * 100;
@@ -277,36 +304,54 @@ export function scoreRotations({ rotations, crops, cy, cyFuture, soil, field, we
     const repeats = mains.filter((c, i) => c === mains[(i + 1) % mains.length] && !crop[c].perennial).length;
     let soilScore = 40 + legumes.length * (soil.socGKg < 10 ? 18 : 12) + covers * 15 - repeats * 15
       + (unique.length >= 3 ? 10 : 0) + (mains.some(c => crop[c].perennial) ? 10 : 0);
-    if (soil.ph < 6 && mains.some(c => c === 'Peas' || c === 'Alfalfa')) soilScore -= 15;
+    if (soil.ph < 6 && mains.some(c => c === 'Peas' || c === 'Alfalfa' || c === 'Lentil' || c === 'Chickpea')) soilScore -= 15;
     soilScore = clamp(soilScore, 0, 100);
 
     // profit per past year with that year's real weather; legumes and cover crops feed the next crop
     const nKg = items.reduce((s, i) => s + (crop[i.main].legume ? crop[i.main].nFixedKgHa : 0) + (i.cover ? crop[i.cover].nFixedKgHa : 0), 0);
     const yearly = cy.years.map(y => mean(plan.map((it, idx) => {
       const { cover, main } = items[idx], k = crop[main], prev = crop[items.at(idx - 1).main];
-      const share = itemOk(cy, it, y) ? 1 : FAIL_YIELD_SHARE;
+      const firstYear = k.perennial && idx === 0; // perennials: establishment year with little or no harvest
+      const share = (itemOk(cy, it, y) ? 1 : FAIL_YIELD_SHARE) * (afterItself(idx) ? 1 - SAME_CROP_PENALTY : 1)
+        * (firstYear ? (k.establishShare ?? 1) : 1);
       return k.yieldTHa * k.priceEurT * share - k.costEurHa
         - (cover ? crop[cover].costEurHa - crop[cover].nFixedKgHa * N_PRICE_EUR_KG : 0)
         + (prev.legume ? prev.nFixedKgHa * N_PRICE_EUR_KG : 0);
     })));
+    const nSavedEur = nKg * N_PRICE_EUR_KG / plan.length;
+    const spend = mean(items.map(i => crop[i.main].costEurHa + (i.cover ? crop[i.cover].costEurHa : 0))) - nSavedEur;
 
     const levels = ['easy', 'medium', 'hard'];
-    const difficulty = [...unique, ...items.filter(i => i.cover).map(i => i.cover)]
-      .map(c => crop[c].switchDifficulty).reduce((a, b) => (levels.indexOf(b) > levels.indexOf(a) ? b : a), 'easy');
+    const difficulty = everything.map(c => crop[c].switchDifficulty).reduce((a, b) => (levels.indexOf(b) > levels.indexOf(a) ? b : a), 'easy');
+
+    // new priorities
+    const labor = clamp(100 - (mean(everything.map(c => crop[c].laborLevel)) - 1) * 50, 0, 100);
+    const machinery = mean(everything.map(c => (known.includes(c) ? 100 : { easy: 80, medium: 45, hard: 10 }[crop[c].switchDifficulty])));
+    const market = mean(mains.map(c => (crop[c].marketEase - 1) * 50));
+    const forage = mean(everything.map(c => crop[c].forageValue / 3 * 100));
+    const groups = mains.map(c => crop[c].group);
+    const groupChanges = groups.filter((g, i) => g !== groups[(i + 1) % groups.length] || g === 'perennial').length / groups.length;
+    const breakers = mains.filter(c => crop[c].pestBreak).length / mains.length;
+    const pests = clamp(10 + 20 * (new Set(groups).size - 1) + 40 * groupChanges + 20 * breakers, 0, 100);
+    const subsidies = clamp((unique.length >= 3 ? 40 : unique.length === 2 ? 20 : 0) + (legumes.length ? 30 : 0) + (bare <= 2 ? 30 : bare <= 3.5 ? 15 : 0), 0, 100);
 
     return {
-      rotation: name, plan, type, mains, unique, covers, legumes,
+      rotation: name, plan, type, recommend, mains, unique, covers, legumes, groups,
       risk, riskFuture, water, waterDemand, bare, erosion, soil: soilScore, difficulty,
-      nSavedEur: nKg * N_PRICE_EUR_KG / plan.length,
+      labor, machinery, market, forage, pests, subsidies, spend, nSavedEur,
       profitBad: percentile(yearly, 10), profitNormal: percentile(yearly, 50), profitGood: percentile(yearly, 90),
     };
   });
 
-  const p = results.map(r => r.profitNormal), lo = Math.min(...p), hi = Math.max(...p);
+  // income and cost are relative: best rotation = 100, worst = 0
+  const norm = (vals, invert) => { const lo = Math.min(...vals), hi = Math.max(...vals); return v => (hi === lo ? 100 : ((invert ? hi - v : v - lo) / (hi - lo)) * 100); };
+  const incomeOf = norm(results.map(r => r.profitNormal)), costOf = norm(results.map(r => r.spend), true);
   const wSum = Object.values(weights).reduce((a, b) => a + b, 0) || 1;
   for (const r of results) {
-    r.income = hi === lo ? 100 : (r.profitNormal - lo) / (hi - lo) * 100;
-    r.score = Object.entries(weights).reduce((s, [k, w]) => s + r[k] * w, 0) / wSum;
+    r.income = incomeOf(r.profitNormal);
+    r.cost = costOf(r.spend);
+    const hardest = Math.min(...[...new Set(r.plan.flatMap(i => i.split('+')))].filter(c => !known.includes(c)).map(c => SWITCH_FACTOR[crop[c].switchDifficulty]), 1);
+    r.score = Object.entries(weights).reduce((s, [k, w]) => s + (r[k] ?? 0) * w, 0) / wSum * hardest;
   }
   return results.sort((a, b) => b.score - a.score);
 }
@@ -314,69 +359,83 @@ export function scoreRotations({ rotations, crops, cy, cyFuture, soil, field, we
 // =============== 5. STRATEGIES ===============
 
 const TYPE_LABEL = {
-  current: 'Your current rotation', moisture: 'Moisture-saving (cover crops)', drought: 'Drought-tolerant',
-  nitrogen: 'Nitrogen-fixing (legumes)', diversified: 'Diversified', traditional: 'Traditional', best: 'Best match for your priorities',
+  current: 'Your current rotation', reference: 'Typical rotation (reference)', moisture: 'Moisture-saving (cover crops)',
+  drought: 'Drought-tolerant', nitrogen: 'Nitrogen-fixing (legumes)', diversified: 'Diversified', traditional: 'Traditional',
+  forage: 'Forage and feed', income: 'High-value crops', perennial: 'Perennial crop', best: 'Best match for your priorities',
 };
 
 // Pick at least 3 strategies: current + moisture-saving + nitrogen-fixing + best overall.
-export function pickStrategies(ranked, currentName, focusCrop) {
-  const pool = focusCrop ? ranked.filter(r => r.mains.includes(focusCrop)) : ranked;
+export function pickStrategies(ranked, currentName, focusCrop, currentLabel = TYPE_LABEL.current) {
+  // monocultures are only ever shown as a baseline, never recommended
+  const pool = (focusCrop ? ranked.filter(r => r.mains.includes(focusCrop)) : ranked).filter(r => r.rotation !== currentName && r.recommend);
   const picked = [];
   const add = (r, label) => { if (r && !picked.some(p => p.rotation === r.rotation)) picked.push({ ...r, label }); };
-  add(ranked.find(r => r.rotation === currentName), TYPE_LABEL.current);
-  add(pool.find(r => r.type === 'moisture' || r.type === 'drought'), TYPE_LABEL.moisture);
+  add(ranked.find(r => r.rotation === currentName), currentLabel);
+  const saver = pool.find(r => r.type === 'moisture' || r.type === 'drought');
+  add(saver, TYPE_LABEL[saver?.type]);
   add(pool.find(r => r.type === 'nitrogen'), TYPE_LABEL.nitrogen);
   add(pool[0], TYPE_LABEL.best);
   for (const r of pool) { if (picked.length >= 4) break; add(r, TYPE_LABEL[r.type]); }
-  for (const r of ranked) { if (picked.length >= 3) break; add(r, TYPE_LABEL[r.type]); }
+  for (const r of ranked.filter(x => x.recommend)) { if (picked.length >= 3) break; add(r, TYPE_LABEL[r.type]); }
   return picked;
 }
 
-const LABELS = { water: 'water fit', erosion: 'erosion protection', income: 'income', soil: 'soil health', risk: 'harvest reliability' };
-
 export function explainStrategy(s, current, ctx) {
-  const { crops, cy, field, soil, terrain, sum, weights } = ctx;
+  const { crops, cy, field, soil, terrain, sum, weights, known = [], beginner } = ctx;
   const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
   const isCurrent = s.rotation === current.rotation;
   const okCount = c => cy.rows.filter(r => r.crop === c && r.ok).length;
+  const chosen = Object.entries(weights).filter(([, w]) => w >= 5).map(([k]) => k);
+  const now = beginner ? 'the typical rotation' : 'your current rotation';
 
-  // why: strongest points on the farmer's top priorities
-  const topPriorities = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k);
-  const diffs = Object.keys(LABELS).map(k => [k, s[k] - current[k]]).sort((a, b) => b[1] - a[1]);
-  const [strongK, strongD] = diffs[0];
+  // why: biggest gains on the priorities the farmer picked (fall back to all)
+  const keys = chosen.length ? chosen : Object.keys(LABELS);
+  const gains = keys.map(k => [k, s[k] - current[k]]).filter(([, d]) => d >= 5).sort((a, b) => b[1] - a[1]).slice(0, 2);
   const why = isCurrent
-    ? 'This is what you grow now, shown as the baseline for comparison.'
-    : `Matches your priorities with a score of ${r0(s.score)} (your current rotation: ${r0(current.score)}). ` +
-      (strongD >= 5 ? `Biggest gain: ${LABELS[strongK]} (${r0(s[strongK])} vs ${r0(current[strongK])}).` : 'Similar to your current rotation on most points.');
+    ? (beginner ? 'The most common rotation in Bulgaria, shown as a reference point.' : 'This is what you grow now, shown as the baseline for comparison.')
+    : `Matches your priorities with a score of ${r0(s.score)} (${now}: ${r0(current.score)}). ` +
+      (gains.length ? `Biggest gains on what you care about: ${gains.map(([k]) => `${LABELS[k]} (${r0(s[k])} vs ${r0(current[k])})`).join(', ')}.` : 'Similar on the points you care about most.');
 
   const evidence = [];
   for (const c of s.unique) evidence.push(`${c} had enough water and no heat stress in ${okCount(c)} of ${cy.years.length} past seasons (NASA POWER).`);
-  if (field?.bareDays != null && (isCurrent || s.bare < current.bare)) evidence.push(`Your field was bare ~${field.bareDays} days in the last year (Sentinel-2).`);
+  if (field?.bareDays > 0 && (isCurrent || s.bare < current.bare)) evidence.push(`Your field was bare ~${field.bareDays} days in the last year (Sentinel-2).`);
   if (soil && !soil.isDefault && (isCurrent || s.legumes.length || s.covers)) evidence.push(`Soil organic carbon ${soil.socGKg.toFixed(1)} g/kg${soil.socGKg < 10 ? ' (low)' : ''}, ${soil.texture.toLowerCase()} texture (SoilGrids).`);
   if (sum.droughtYearsRecent >= 2) evidence.push(`${sum.droughtYearsRecent} of the last 10 summers were dry (NASA POWER).`);
 
   const benefits = [];
   if (!isCurrent) {
     const dW = current.waterDemand - s.waterDemand;
-    if (Math.abs(dW) >= 20) benefits.push(`${dW > 0 ? 'Uses' : 'Needs'} ~${Math.abs(r0(dW))} mm ${dW > 0 ? 'less' : 'more'} water per year than your current rotation.`);
+    if (Math.abs(dW) >= 20) benefits.push(`${dW > 0 ? 'Uses' : 'Needs'} ~${Math.abs(r0(dW))} mm ${dW > 0 ? 'less' : 'more'} water per year than ${now}.`);
     const dB = current.bare - s.bare;
     if (dB >= 0.5) {
       const pct = current.bare > 0 ? r0(dB / current.bare * 100) : 0;
       benefits.push(`Bare soil drops from ~${current.bare.toFixed(1)} to ~${s.bare.toFixed(1)} months per year (about ${pct}% less exposure to erosion${terrain?.slopePct > 3 ? ', important on your slope' : ''}).`);
     }
-    if (s.nSavedEur >= 5) benefits.push(`${s.covers ? 'Cover crops' : 'Legumes'} save roughly ${eur(s.nSavedEur)}/ha per year in nitrogen fertilizer.`);
+    if (s.nSavedEur >= 5) benefits.push(`${s.covers ? 'Cover crops and legumes' : 'Legumes'} save roughly ${eur(s.nSavedEur)}/ha per year in nitrogen fertilizer.`);
     const dR = s.risk - current.risk;
-    if (Math.abs(dR) >= 3) benefits.push(`Harvest success ${r0(s.risk)}% vs ${r0(current.risk)}% now${dR < 0 ? ' (lower, see risks)' : ''}.`);
+    if (Math.abs(dR) >= 3) benefits.push(`Harvest success ${r0(s.risk)}% vs ${r0(current.risk)}%${dR < 0 ? ' (lower, see risks)' : ''}.`);
     const dP = s.profitNormal - current.profitNormal;
-    benefits.push(`Typical profit ${eur(s.profitNormal)}/ha/yr vs ${eur(current.profitNormal)} now (${dP >= 0 ? '+' : ''}${eur(dP)}); in a bad year ${eur(s.profitBad)} vs ${eur(current.profitBad)}.`);
+    benefits.push(`Typical profit ${eur(s.profitNormal)}/ha/yr vs ${eur(current.profitNormal)} (${dP >= 0 ? '+' : ''}${eur(dP)}); in a bad year ${eur(s.profitBad)} vs ${eur(current.profitBad)}.`);
     if (s.soil - current.soil >= 10) benefits.push(`Builds soil health: score ${r0(s.soil)} vs ${r0(current.soil)}.`);
+    // the extra priorities, only when the farmer picked them
+    const on = k => chosen.includes(k);
+    if (on('cost') && current.spend - s.spend >= 30) benefits.push(`Lower costs: about ${eur(current.spend - s.spend)}/ha less spent per year (seed, fertilizer, fuel).`);
+    if (on('labor') && s.labor - current.labor >= 10) benefits.push(`Less work: these crops need less time and labour (score ${r0(s.labor)} vs ${r0(current.labor)}).`);
+    if (on('machinery')) {
+      const needNew = s.unique.filter(c => !known.includes(c) && crop[c].switchDifficulty !== 'easy');
+      benefits.push(needNew.length ? `Machinery: ${needNew.join(', ')} may need equipment you don't have yet.` : 'Machinery: grown with standard grain equipment.');
+    }
+    if (on('market') && s.market - current.market >= 10) benefits.push(`Easier to sell: crops with established buyers (score ${r0(s.market)} vs ${r0(current.market)}).`);
+    if (on('forage') && s.forage - current.forage >= 10) benefits.push(`Animal feed: ${s.unique.filter(c => crop[c].forageValue >= 2).join(', ') || 'some crops'} can be used as feed or hay.`);
+    if (on('pests') && s.pests - current.pests >= 10) benefits.push(`Breaks pest and disease cycles: ${new Set(s.groups).size} crop families, alternating every season.`);
+    if (on('subsidies') && s.subsidies - current.subsidies >= 10) benefits.push(`EU eco-schemes: ${[s.unique.length >= 3 && '3+ crops', s.legumes.length && 'nitrogen-fixing crops', s.bare <= 2 && 'soil covered most of the year'].filter(Boolean).join(', ')} often qualify for support.`);
   } else {
     benefits.push(`Bare soil ~${s.bare.toFixed(1)} months/yr, harvest success ${r0(s.risk)}%, typical profit ${eur(s.profitNormal)}/ha/yr.`);
   }
 
   const risks = [];
   const newCrops = [...s.unique, ...s.plan.filter(i => i.includes('+')).map(i => i.split('+')[0])]
-    .filter((c, i, a) => a.indexOf(c) === i && !current.plan.join('+').includes(c));
+    .filter((c, i, a) => a.indexOf(c) === i && !current.plan.join('+').includes(c) && !known.includes(c));
   for (const c of newCrops) risks.push(`${c}: ${crop[c].notes}`);
   const weak = s.unique.filter(c => okCount(c) < cy.years.length * 0.7);
   for (const c of weak) {
@@ -384,8 +443,10 @@ export function explainStrategy(s, current, ctx) {
     const dry = rows.filter(r => !r.waterOk).length, hot = rows.filter(r => !r.heatOk).length;
     risks.push(`${c} failed the stress test in ${rows.length} of ${cy.years.length} seasons, mostly from ${dry >= hot ? 'too little rain' : 'heat'} in ${crop[c].criticalMonths.map(m => MONTHS[m - 1]).join('–')}.`);
   }
+  const repeated = [...new Set(s.mains.filter((m, i) => m === s.mains[(i + 1) % s.mains.length] && !crop[m].perennial))];
+  for (const m of repeated) risks.push(`${m} after ${m}: yields usually drop 10–20% and pests and diseases build up (included in the numbers).`);
   if (s.riskFuture < s.risk - 5) risks.push(`If warming continues, harvest success may fall to ~${r0(s.riskFuture)}% by 2035.`);
-  if (soil.ph < 6 && s.unique.some(c => c === 'Peas' || c === 'Alfalfa')) risks.push(`Your soil is acidic (pH ${soil.ph.toFixed(1)}); peas and alfalfa may need liming.`);
+  if (soil.ph < 6 && s.unique.some(c => ['Peas', 'Alfalfa', 'Lentil', 'Chickpea'].includes(c))) risks.push(`Your soil is acidic (pH ${soil.ph.toFixed(1)}); some legumes may need liming.`);
   if (!risks.length) risks.push('No major risks found in the data. Still check with a local agronomist.');
 
   const gaps = ['Crop water needs, yields and prices are regional estimates, not your farm records.',
@@ -393,8 +454,52 @@ export function explainStrategy(s, current, ctx) {
   if (!field) gaps.push('No satellite history of the field was available, so bare-soil and moisture checks are missing.');
   if (soil.isDefault) gaps.push('Soil data was unavailable; typical loam values were used.');
   if (newCrops.length) gaps.push(`Local market and equipment for ${newCrops.join(', ')} are not checked by the tool.`);
+  if (chosen.includes('subsidies')) gaps.push('Eco-scheme rules change; check current requirements with the State Fund Agriculture (ДФЗ).');
 
   return { why, evidence, benefits, risks, gaps };
+}
+
+// =============== 6. PLANTING HISTORY ===============
+
+export const GROUPS = { cereal: 'Cereal / grain', oilseed: 'Oilseed', legume: 'Legume (peas, beans…)', rowcrop: 'Row crop (corn, beet)', forage: 'Forage / hay', vegetable: 'Vegetable', spice: 'Herb / spice', other: 'Other' };
+const GROUP_STAND_IN = { cereal: 'Wheat', oilseed: 'Sunflower', legume: 'Peas', rowcrop: 'Corn', forage: 'Alfalfa', vegetable: 'Potatoes', spice: 'Coriander', other: 'Buckwheat', perennial: 'Lavender' };
+const KEYWORDS = [
+  [/wheat|пшениц|spelt|лимец|einkorn/, 'cereal'], [/barley|ечемик|oat|овес|rye|ръж|tritic|тритик|millet|прос|sorghum|сорго|rice|ориз|grain|зърн/, 'cereal'],
+  [/sunflower|слънчог|rapeseed|рапиц|canola|flax|лен|camelina|рижей|mustard|синап|safflower|шафран|oil|масл/, 'oilseed'],
+  [/pea|грах|bean|боб|фасул|бакла|soy|соя|lentil|леща|chickpea|нахут|vetch|фий|lupin|лупин|clover|детелин/, 'legume'],
+  [/corn|maize|царевиц|beet|цвекл/, 'rowcrop'], [/alfalfa|люцерн|hay|сено|grass|трев|forage|фураж/, 'forage'],
+  [/potato|картоф|tomato|домат|pepper|пипер|onion|лук|cabbage|зеле|melon|диня|пъпеш|pumpkin|тикв|cucumber|краставиц|vegetable|зеленчук/, 'vegetable'],
+  [/coriander|кориандър|fennel|копър|anise|анасон|mint|мента|herb|билк|spice/, 'spice'],
+];
+
+// Turns whatever the farmer typed into a crop the model knows.
+// Returns { crop, known, group } - unknown crops get a stand-in from their group.
+export function resolveCrop(text, crops, groupOverride) {
+  const t = text.trim().toLowerCase();
+  if (!t) return null;
+  const hit = crops.find(c => c.crop.toLowerCase() === t || c.nameBg?.toLowerCase() === t);
+  if (hit) return { crop: hit.crop, known: true, group: hit.group, label: text.trim() };
+  const partial = crops.find(c => c.crop !== 'Cover crop' && (t.includes(c.crop.toLowerCase()) || (c.nameBg && t.includes(c.nameBg.toLowerCase().slice(0, 5)))));
+  if (partial && !groupOverride) return { crop: partial.crop, known: true, group: partial.group, label: text.trim() };
+  const group = groupOverride || KEYWORDS.find(([re]) => re.test(t))?.[1] || null;
+  return { crop: group ? GROUP_STAND_IN[group] : null, known: false, group, label: text.trim() };
+}
+
+// Shortest repeating pattern: [W,S,W,S,W] -> [W,S]
+export function compressHistory(plan) {
+  for (let p = 1; p < plan.length; p++) {
+    if (plan.every((c, i) => i < p || c === plan[i - p])) return plan.slice(0, p);
+  }
+  return plan;
+}
+
+// What to plant next season: the first crop of the plan that isn't the same crop or family as last season.
+export function nextCrop(plan, lastCrop, crops) {
+  const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
+  if (!lastCrop) return plan[0];
+  const lastGroup = crop[lastCrop]?.group;
+  const ok = item => { const m = split(item).main; return m !== lastCrop && (crop[m].group !== lastGroup || crop[m].perennial); };
+  return plan.find(ok) ?? plan.find(i => split(i).main !== lastCrop) ?? plan[0];
 }
 
 // "Can I grow X here?"
@@ -426,7 +531,7 @@ export function cropVerdict(cropName, cy, cyFuture, crops) {
 // Best main crops for this field (recommendation mode)
 export function rankCrops(cy, crops) {
   const n = cy.years.length;
-  return crops.filter(c => c.crop !== 'Cover crop').map(c => {
+  return crops.filter(c => c.crop !== 'Cover crop' && !c.perennial).map(c => {
     const ok = cy.rows.filter(r => r.crop === c.crop && r.ok).length;
     const pct = ok / n * 100;
     const profit = c.yieldTHa * c.priceEurT * (pct / 100 + (1 - pct / 100) * FAIL_YIELD_SHARE) - c.costEurHa;

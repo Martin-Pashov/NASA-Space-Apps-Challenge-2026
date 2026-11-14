@@ -5,77 +5,139 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FieldShift: see what your field can't show you</title>
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/vendor/geoman/leaflet-geoman.css">
   <link rel="stylesheet" href="style.css">
   <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/vendor/geoman/leaflet-geoman.min.js"></script>
   <script src="/vendor/chart/chart.umd.min.js"></script>
 </head>
 <body>
   <!-- ================= START ================= -->
-  <div id="start">
+  <div id="start" class="page">
     <header class="hero">
-      <h1>🌾 FieldShift</h1>
-      <p class="lead">You can see your crops. Satellites see what you can't: how long your soil stays bare, whether it's drier than usual, and how your crops will cope with the climate ahead.</p>
-      <p class="muted">Free data from NASA and ESA satellites, analysed for your field in under a minute.</p>
+      <div class="logo">🌾 FieldShift</div>
+      <h1>See what your field can't show you</h1>
+      <p class="lead">You can see your crops. Satellites see the rest: how long your soil stays bare, whether it's drier than usual, and how your crops will cope with the climate ahead.</p>
+      <p class="muted">Free data from NASA and ESA satellites, analysed for your field in about a minute.</p>
     </header>
 
-    <section class="step">
-      <h2><span class="num">1</span> Where is your field?</h2>
-      <form id="searchForm" class="search">
-        <input id="searchInput" placeholder="Village, town or address, e.g. General Toshevo" autocomplete="off">
-        <button type="submit">Search</button>
+    <!-- STEP 1 -->
+    <section class="card step">
+      <div class="step-head"><span class="num">1</span><div><h2>Where is your field?</h2><p class="muted">Search for a village, then click on your field. You can resize or redraw it.</p></div></div>
+
+      <form id="searchForm" class="search" autocomplete="off">
+        <div class="search-box">
+          <input id="searchInput" placeholder="Village or town, e.g. General Toshevo">
+          <ul id="searchResults" class="dropdown" hidden></ul>
+        </div>
+        <button type="submit" class="btn">Search</button>
       </form>
-      <ul id="searchResults" class="results-list"></ul>
-      <p class="muted">Or click directly on your field on the map.</p>
-      <div id="map"></div>
-      <p id="picked" class="picked">No field selected yet.</p>
+
+      <div id="recentWrap" hidden>
+        <p class="small-label">Recent fields</p>
+        <div id="recent" class="recent"></div>
+      </div>
+
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div id="mapHint" class="map-hint">Click on your field to select it</div>
+      </div>
+
+      <div id="fieldCard" class="field-card empty">
+        <div class="field-icon">📍</div>
+        <div class="field-info">
+          <b id="fieldName">No field selected yet</b>
+          <span id="fieldMeta" class="muted">Click on the map, or use the ▭ and ⬠ tools on the left to draw your field.</span>
+          <span id="fieldNote" class="note"></span>
+        </div>
+        <button id="clearField" class="btn ghost" hidden>Change field</button>
+      </div>
     </section>
 
-    <section class="step">
-      <h2><span class="num">2</span> What do you want to know?</h2>
-      <div class="modes">
-        <label class="mode"><input type="radio" name="mode" value="recommend" checked>
+    <!-- STEP 2 -->
+    <section class="card step">
+      <div class="step-head"><span class="num">2</span><div><h2>Tell us about you</h2><p class="muted">So we can tailor the advice to your situation.</p></div></div>
+
+      <p class="q">Your situation</p>
+      <div class="options two">
+        <label class="option"><input type="radio" name="situation" value="farm" checked>
+          <span><b>I already farm this field</b><small>Tell us what you grew, we compare it with better options</small></span></label>
+        <label class="option"><input type="radio" name="situation" value="new">
+          <span><b>I'm starting out / new land</b><small>No history needed, we suggest where to begin</small></span></label>
+      </div>
+
+      <div id="historyBox" class="history">
+        <p class="q">What did you grow in the last seasons? <small>(fill what you remember, at least one)</small></p>
+        <div class="presets"><span class="muted">Quick fill:</span>
+          <button type="button" class="chip-btn" data-preset="Wheat,Sunflower">Wheat ↔ Sunflower</button>
+          <button type="button" class="chip-btn" data-preset="Wheat,Corn">Wheat ↔ Corn</button>
+          <button type="button" class="chip-btn" data-preset="Wheat,Rapeseed,Sunflower">Wheat › Rapeseed › Sunflower</button>
+          <button type="button" class="chip-btn" data-preset="Wheat,Wheat">Only wheat</button>
+          <button type="button" class="chip-btn" data-preset="">Clear</button>
+        </div>
+        <div id="historyRows" class="history-rows"></div>
+        <datalist id="cropList"></datalist>
+        <p id="historyError" class="error" hidden>Add at least one season, or choose "I'm starting out".</p>
+      </div>
+
+      <p class="q">What do you want to know?</p>
+      <div class="options two">
+        <label class="option"><input type="radio" name="mode" value="recommend" checked>
           <span><b>Recommend what to plant</b><small>Compare rotation strategies for my field</small></span></label>
-        <label class="mode"><input type="radio" name="mode" value="crop">
+        <label class="option"><input type="radio" name="mode" value="crop">
           <span><b>Can I grow a specific crop?</b><small>Check one crop against my field's data</small></span></label>
       </div>
-      <label id="cropPick" class="field" hidden>Which crop? <select id="focusCrop"></select></label>
+      <label id="cropPick" class="field-select" hidden>Which crop? <select id="focusCrop"></select></label>
 
-      <p class="label">What matters most to you? <small>(pick one or more)</small></p>
-      <div class="chips" id="priorities">
-        <label class="chip"><input type="checkbox" value="water" checked> 💧 Save moisture</label>
-        <label class="chip"><input type="checkbox" value="erosion"> 🌬️ Stop erosion</label>
-        <label class="chip"><input type="checkbox" value="income"> 💶 More income</label>
-        <label class="chip"><input type="checkbox" value="soil"> 🌱 Healthier soil</label>
-        <label class="chip"><input type="checkbox" value="risk"> 🛡️ Fewer bad years</label>
-      </div>
-
-      <label class="field">What do you grow now? <select id="current"></select></label>
+      <p class="q">What matters most to you? <small>(pick one or more)</small></p>
+      <div class="priorities" id="priorities"></div>
     </section>
 
     <div class="go">
-      <button id="analyze" class="primary" disabled>Analyse my field</button>
-      <p id="status" class="muted"></p>
+      <button id="analyze" class="btn primary" disabled>Analyse my field</button>
+      <p id="goHint" class="muted">Select a field on the map first.</p>
     </div>
   </div>
 
+  <!-- ================= PROGRESS ================= -->
+  <div id="progress" class="page" hidden>
+    <section class="card progress-card">
+      <h2>Analysing your field…</h2>
+      <p class="muted" id="progressField"></p>
+      <ul id="steps" class="steps"></ul>
+      <p id="progressNote" class="muted"></p>
+      <button id="progressBack" class="btn ghost" hidden>← Back</button>
+    </section>
+  </div>
+
   <!-- ================= RESULTS ================= -->
-  <div id="results" hidden>
+  <div id="results" class="page" hidden>
     <div class="topbar">
-      <button id="back">← Change field or goal</button>
-      <div><b id="placeName"></b> <span class="muted" id="coords"></span></div>
+      <button id="back" class="btn ghost">← Change field or goal</button>
+      <div class="topbar-info"><b id="placeName"></b> <span class="muted" id="coords"></span><br><span class="muted" id="historyLabel"></span></div>
     </div>
 
-    <section id="verdictBox" hidden></section>
+    <section id="basics" class="card basics" hidden>
+      <h2>New to crop rotation? The basics in 30 seconds</h2>
+      <ul>
+        <li><b>Rotation</b> means growing different crops on the same field in turns, instead of the same crop every year. It stops pests and diseases from building up and keeps the soil healthier.</li>
+        <li><b>Legumes</b> (peas, chickpeas, soybeans, alfalfa, vetch) take nitrogen from the air and leave it in the soil, so the next crop needs less fertilizer.</li>
+        <li><b>Cover crops</b> are sown after harvest just to keep the soil covered over winter. They stop erosion, keep moisture and add organic matter.</li>
+        <li>Start simple: a <b>cereal</b> (wheat, barley) followed by an <b>oilseed or legume</b> is easy to manage with standard machinery.</li>
+      </ul>
+    </section>
 
-    <section>
+    <section id="verdictBox" class="card" hidden></section>
+
+    <section class="card">
       <h2>What the satellites see that you can't</h2>
       <div id="insights" class="insights"></div>
     </section>
 
-    <section>
+    <section class="card">
       <h2>Your field over time</h2>
       <div class="charts">
-        <div><p class="muted">Greenness (NDVI) and moisture (NDMI) of your field, every 10 days · ESA Sentinel-2</p><div class="chart"><canvas id="fieldChart"></canvas></div><p class="muted" id="fieldNote"></p></div>
+        <div><p class="muted">Greenness (NDVI) and moisture (NDMI) of your field, every 10 days · ESA Sentinel-2</p><div class="chart"><canvas id="fieldChart"></canvas></div><p class="muted" id="fieldChartNote"></p></div>
         <div><p class="muted">Rain in the last 12 months vs normal (mm) · NASA POWER</p><div class="chart"><canvas id="rainChart"></canvas></div></div>
       </div>
       <div class="charts">
@@ -84,32 +146,25 @@
       </div>
     </section>
 
-    <section>
+    <section class="card">
       <h2>Strategies for the next 3 years</h2>
       <p class="action" id="action"></p>
-      <div class="adjust">
-        <span class="muted">Fine-tune your priorities:</span>
-        <label>💧 Moisture <input type="range" min="0" max="10" data-w="water"><b></b></label>
-        <label>🌬️ Erosion <input type="range" min="0" max="10" data-w="erosion"><b></b></label>
-        <label>💶 Income <input type="range" min="0" max="10" data-w="income"><b></b></label>
-        <label>🌱 Soil <input type="range" min="0" max="10" data-w="soil"><b></b></label>
-        <label>🛡️ Reliability <input type="range" min="0" max="10" data-w="risk"><b></b></label>
-      </div>
+      <details class="adjust-wrap"><summary>Fine-tune your priorities</summary><div id="adjust" class="adjust"></div></details>
       <div class="table-wrap"><table id="compare"></table></div>
       <div id="strategies" class="strategies"></div>
     </section>
 
-    <details>
+    <details class="card">
       <summary>All rotations ranked</summary>
       <div class="table-wrap"><table id="ranking"></table></div>
     </details>
 
-    <details>
+    <details class="card">
       <summary>How this works, data sources and limitations</summary>
-      <p><b>Data, fetched live for your field:</b> NASA POWER (25 years of monthly temperature and rain + the last 12 months daily), ESA Copernicus Sentinel-2 via Sentinel Hub (NDVI, SAVI, moisture index NDMI and Bare Soil Index every 10 days for 5 years, clouds removed), ISRIC SoilGrids (texture, organic carbon, pH), NASA SRTM elevation (slope).</p>
+      <p><b>Data, fetched live for your field:</b> NASA POWER (25 years of monthly temperature and rain + the last 12 months daily), ESA Copernicus Sentinel-2 via Sentinel Hub (NDVI, SAVI, moisture index NDMI and Bare Soil Index every 10 days for 5 years, only inside your field outline, clouds removed), ISRIC SoilGrids (texture, organic carbon, pH), NASA SRTM elevation (slope). Field outlines from OpenStreetMap, province borders from Natural Earth.</p>
       <p><b>Stress test:</b> every crop is checked against every past season: enough water (season rain + soil water ≥ 75% of crop need) and no heat stress in its critical months. The 2035 outlook shifts past weather along the measured trend. It's a projection, not a forecast.</p>
-      <p><b>Scores (0–100):</b> moisture = how well rain covers crop needs; erosion = months of bare soil between crops; income = typical profit using each year's real outcome; soil = legumes, cover crops and diversity; reliability = share of seasons that passed. Your priorities weight them.</p>
-      <p><b>Limitations:</b> crop values are regional estimates, farming is assumed rain-fed, satellites average a ~500 m box around the point. FieldShift supports your decisions; it doesn't replace your experience or a local agronomist.</p>
+      <p><b>Scores (0–100):</b> moisture, erosion (bare months between crops), income (typical profit with each year's real outcome), soil health (legumes, cover crops, variety), reliability (seasons that passed), costs, labour, machinery fit, market, animal feed, pest-cycle breaks and EU eco-scheme fit. Your priorities weight them.</p>
+      <p><b>Limitations:</b> crop values are regional estimates, farming is assumed rain-fed. FieldShift supports your decisions; it doesn't replace your experience or a local agronomist.</p>
     </details>
     <p class="disclaimer">FieldShift helps you explore options. Always check new crops with a local agronomist, your buyers and your equipment.</p>
   </div>

@@ -26,14 +26,16 @@
    "Wheat",
    "Wheat"
   ],
-  "type": "traditional"
+  "type": "traditional",
+  "recommend": false
  },
  "Corn > Corn (monoculture)": {
   "plan": [
    "Corn",
    "Corn"
   ],
-  "type": "traditional"
+  "type": "traditional",
+  "recommend": false
  },
  "Wheat > Cover crop + Sunflower": {
   "plan": [
@@ -99,5 +101,112 @@
    "Sunflower"
   ],
   "type": "diversified"
+ },
+ "Wheat > Chickpea > Sunflower": {
+  "plan": [
+   "Wheat",
+   "Chickpea",
+   "Sunflower"
+  ],
+  "type": "nitrogen"
+ },
+ "Durum wheat > Lentil > Sunflower": {
+  "plan": [
+   "Durum wheat",
+   "Lentil",
+   "Sunflower"
+  ],
+  "type": "drought"
+ },
+ "Barley > Field beans > Wheat > Sunflower": {
+  "plan": [
+   "Barley",
+   "Field beans",
+   "Wheat",
+   "Sunflower"
+  ],
+  "type": "nitrogen"
+ },
+ "Wheat > Vetch > Corn": {
+  "plan": [
+   "Wheat",
+   "Vetch",
+   "Corn"
+  ],
+  "type": "forage"
+ },
+ "Triticale > Vetch > Alfalfa (2 yrs)": {
+  "plan": [
+   "Triticale",
+   "Vetch",
+   "Alfalfa",
+   "Alfalfa"
+  ],
+  "type": "forage"
+ },
+ "Wheat > Coriander > Sunflower": {
+  "plan": [
+   "Wheat",
+   "Coriander",
+   "Sunflower"
+  ],
+  "type": "diversified"
+ },
+ "Oats > Peas > Wheat > Sunflower": {
+  "plan": [
+   "Oats",
+   "Peas",
+   "Wheat",
+   "Sunflower"
+  ],
+  "type": "diversified"
+ },
+ "Wheat > Millet > Peas": {
+  "plan": [
+   "Wheat",
+   "Millet",
+   "Peas"
+  ],
+  "type": "drought"
+ },
+ "Rye > Cover crop + Millet": {
+  "plan": [
+   "Rye",
+   "Cover crop+Millet"
+  ],
+  "type": "moisture"
+ },
+ "Wheat > Buckwheat > Chickpea": {
+  "plan": [
+   "Wheat",
+   "Buckwheat",
+   "Chickpea"
+  ],
+  "type": "diversified"
+ },
+ "Wheat > Sugar beet > Barley": {
+  "plan": [
+   "Wheat",
+   "Sugar beet",
+   "Barley"
+  ],
+  "type": "income"
+ },
+ "Wheat > Potatoes > Peas": {
+  "plan": [
+   "Wheat",
+   "Potatoes",
+   "Peas"
+  ],
+  "type": "income"
+ },
+ "Lavender (perennial)": {
+  "plan": [
+   "Lavender",
+   "Lavender",
+   "Lavender",
+   "Lavender"
+  ],
+  "type": "perennial"
  }
 }

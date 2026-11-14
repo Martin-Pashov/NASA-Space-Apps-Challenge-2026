@@ -1,2 +1,9 @@
 node_modules/
 .env
+
+# generated data: rebuilt automatically on each analysis
+data/cache/*
+!data/cache/.gitkeep
+
+# editor extension files
+.qodo/

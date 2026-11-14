@@ -51,9 +51,10 @@ export async function getRecentWeather(lat, lon) {
 const SOIL_DEFAULT = { clayPct: 25, sandPct: 35, siltPct: 40, socGKg: 12, ph: 6.8 };
 
 export function describeSoil(s) {
-  let texture = 'Loam', awcMm = 110;
-  if (s.sandPct > 60) { texture = 'Sandy'; awcMm = 60; }
-  else if (s.clayPct > 40) { texture = 'Clay'; awcMm = 150; }
+  // plant-available water in the whole root zone (~1 m), rough values per texture
+  let texture = 'Loam', awcMm = 160;
+  if (s.sandPct > 60) { texture = 'Sandy'; awcMm = 80; }
+  else if (s.clayPct > 40) { texture = 'Clay'; awcMm = 190; }
   return { ...s, texture, awcMm };
 }
 export const defaultSoil = () => ({ ...describeSoil({ ...SOIL_DEFAULT }), isDefault: true });
@@ -72,9 +73,10 @@ export async function getSoil(lat, lon) {
   }
   if (!Object.keys(v).length) throw new Error('SoilGrids has no data here');
   return describeSoil({
-    clayPct: (v.clay ?? SOIL_DEFAULT.clayPct * 10) / 10, // g/kg -> %
-    sandPct: (v.sand ?? SOIL_DEFAULT.sandPct * 10) / 10,
-    siltPct: (v.silt ?? SOIL_DEFAULT.siltPct * 10) / 10,
+    // after dividing by d_factor, clay/sand/silt are already in %, soc in g/kg, pH in pH units
+    clayPct: v.clay ?? SOIL_DEFAULT.clayPct,
+    sandPct: v.sand ?? SOIL_DEFAULT.sandPct,
+    siltPct: v.silt ?? SOIL_DEFAULT.siltPct,
     socGKg: v.soc ?? SOIL_DEFAULT.socGKg,
     ph: v.phh2o ?? SOIL_DEFAULT.ph,
   });
@@ -145,14 +147,12 @@ async function getToken() {
   return cachedToken.value;
 }
 
-export async function getSentinel(lat, lon, size = 0.003) {
+// geometry: GeoJSON Polygon of the field (lon/lat). Only pixels inside it are counted.
+export async function getSentinel(geometry) {
   const startYear = new Date().getFullYear() - 5;
   const body = {
     input: {
-      bounds: {
-        bbox: [lon - size, lat - size, lon + size, lat + size], // ~500 m box around the field
-        properties: { crs: 'http://www.opengis.net/def/crs/EPSG/0/4326' },
-      },
+      bounds: { geometry, properties: { crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' } },
       data: [{ type: 'sentinel-2-l2a', dataFilter: { maxCloudCoverage: 50 } }],
     },
     aggregation: {
@@ -176,10 +176,39 @@ export async function getSentinel(lat, lon, size = 0.003) {
     const mean = id => o[id]?.bands?.B0?.stats?.mean;
     const r = { date: item.interval.from.slice(0, 10), ndvi: mean('ndvi'), savi: mean('savi'), ndmi: mean('ndmi'), bsi: mean('bsi') };
     if (typeof r.ndvi !== 'number' || typeof r.bsi !== 'number') continue; // fully cloudy period
-    r.bare = r.bsi > 0 && r.ndvi < 0.2 ? 1 : 0;
+    r.bare = r.bsi > 0.05 && r.ndvi < 0.25 ? 1 : 0; // same rule as analysis.js
     rows.push(r);
   }
   return rows;
+}
+
+// ---------- OpenStreetMap Overpass: auto-detect the field shape ----------
+// Finds farmland polygons that contain the point and returns the smallest one.
+export async function getParcel(lat, lon) {
+  const tags = '^(farmland|farmyard|orchard|vineyard|meadow|grass|plant_nursery)$';
+  const query = `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)[landuse~"${tags}"];rel(pivot.a)[landuse~"${tags}"];);out geom;`;
+  const res = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
+    body: new URLSearchParams({ data: query }),
+    signal: timeout(30000),
+  });
+  if (!res.ok) throw new Error(`Overpass ${res.status}`);
+
+  const shapes = [];
+  for (const el of (await res.json()).elements ?? []) {
+    let pts = null;
+    if (el.type === 'way' && el.geometry) pts = el.geometry;
+    if (el.type === 'relation') {
+      const outers = (el.members ?? []).filter(m => m.role === 'outer' && m.geometry);
+      if (outers.length === 1) pts = outers[0].geometry;
+    }
+    if (!pts || pts.length < 4) continue;
+    const ring = pts.map(p => [p.lon, p.lat]);
+    if (ring[0][0] !== ring.at(-1)[0] || ring[0][1] !== ring.at(-1)[1]) ring.push(ring[0]);
+    shapes.push({ geometry: { type: 'Polygon', coordinates: [ring] }, landuse: el.tags?.landuse });
+  }
+  return shapes;
 }
 
 // ---------- OpenStreetMap Nominatim: address search ----------

@@ -4,16 +4,20 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as src from './lib/sources.js';
+import { areaHa, centroid, geometryKey } from './public/geo.js';
 
 loadEnv();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const BACKUP = path.resolve('data/cache');
+const MAX_FIELD_HA = 2000; // keeps Sentinel Hub processing quota under control
 fs.mkdirSync(BACKUP, { recursive: true });
 
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static('public'));
 app.use('/vendor/chart', express.static('node_modules/chart.js/dist'));
 app.use('/vendor/leaflet', express.static('node_modules/leaflet/dist'));
+app.use('/vendor/geoman', express.static('node_modules/@geoman-io/leaflet-geoman-free/dist'));
 
 // Live call first. Each success is also kept as a backup copy, used only if the live call fails later
 // (e.g. bad Wi-Fi during a demo).
@@ -39,22 +43,57 @@ app.get('/api/reverse', async (req, res) => {
   catch { res.json({ name: '' }); }
 });
 
-// One call collects everything about the field, all sources in parallel.
-app.get('/api/analyze', async (req, res) => {
+// Auto-detect the field shape from OpenStreetMap farmland outlines.
+app.get('/api/parcel', async (req, res) => {
   const lat = +req.query.lat, lon = +req.query.lon;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return res.status(400).json({ error: 'Missing location' });
-  const k = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+  try {
+    const shapes = (await src.getParcel(lat, lon))
+      .map(s => ({ ...s, areaHa: areaHa(s.geometry) }))
+      .sort((a, b) => a.areaHa - b.areaHa);
+    const best = shapes[0];
+    if (!best) return res.json({ found: false, reason: 'No field outline on OpenStreetMap here.' });
+    if (best.areaHa > 150) return res.json({ found: false, reason: `The OpenStreetMap outline here covers ${Math.round(best.areaHa)} ha (many fields at once).` });
+    res.json({ found: true, ...best });
+  } catch (err) {
+    res.json({ found: false, reason: `Field outline service unavailable (${err.message}).` });
+  }
+});
 
-  const [climate, recent, soil, terrain, sentinel] = await Promise.all([
-    live(`climate_${k}`, () => src.getClimate(lat, lon)),
-    live(`recent_${k}`, () => src.getRecentWeather(lat, lon)),
-    live(`soil_${k}`, () => src.getSoil(lat, lon)),
-    live(`terrain_${k}`, () => src.getTerrain(lat, lon)),
-    live(`sentinel_${k}`, () => src.getSentinel(lat, lon)),
+// Collects everything about the field. Streams progress as one JSON object per line (NDJSON):
+// {type:'step', id, status:'running'|'done'|'failed', ms, error}  ...  {type:'result', data}
+app.post('/api/analyze', async (req, res) => {
+  const geometry = req.body?.geometry;
+  if (geometry?.type !== 'Polygon' || !Array.isArray(geometry.coordinates?.[0]) || geometry.coordinates[0].length < 4) {
+    return res.status(400).json({ error: 'Please select a field on the map first.' });
+  }
+  const ha = areaHa(geometry);
+  if (ha > MAX_FIELD_HA) return res.status(400).json({ error: `The selected area is ${Math.round(ha)} ha. Please draw a field smaller than ${MAX_FIELD_HA} ha.` });
+
+  const { lat, lon } = centroid(geometry);
+  const k = `${lat.toFixed(3)}_${lon.toFixed(3)}`;
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.flushHeaders();
+  const send = obj => res.write(JSON.stringify(obj) + '\n');
+
+  const step = async (id, cacheName, fn) => {
+    const t0 = Date.now();
+    send({ type: 'step', id, status: 'running' });
+    const r = await live(cacheName, fn);
+    send({ type: 'step', id, status: r.ok ? 'done' : 'failed', ms: Date.now() - t0, backup: !!r.backup, error: r.error });
+    return r;
+  };
+
+  const [climate, recent, sentinel, soil, terrain] = await Promise.all([
+    step('climate', `climate_${k}`, () => src.getClimate(lat, lon)),
+    step('recent', `recent_${k}`, () => src.getRecentWeather(lat, lon)),
+    step('sentinel', `sentinel_${geometryKey(geometry)}`, () => src.getSentinel(geometry)),
+    step('soil', `soil_${k}`, () => src.getSoil(lat, lon)),
+    step('terrain', `terrain_${k}`, () => src.getTerrain(lat, lon)),
   ]);
-  if (!climate.ok) return res.status(502).json({ error: `Couldn't load NASA climate data: ${climate.error}` });
   if (!soil.ok) Object.assign(soil, { ok: true, data: src.defaultSoil() });
-  res.json({ lat, lon, climate, recent, soil, terrain, sentinel });
+  send({ type: 'result', data: { lat, lon, areaHa: ha, geometry, climate, recent, soil, terrain, sentinel } });
+  res.end();
 });
 
 app.listen(PORT, () => console.log(`FieldShift running at http://localhost:${PORT}`));
