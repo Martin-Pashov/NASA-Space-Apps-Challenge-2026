@@ -1,0 +1,192 @@
+[
+ {
+  "crop": "Wheat",
+  "seasonStart": 10,
+  "seasonEnd": 6,
+  "criticalMonths": [
+   5,
+   6
+  ],
+  "waterNeedMm": 450,
+  "heatLimitC": 22.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 5.5,
+  "priceEurT": 200,
+  "costEurHa": 700,
+  "switchDifficulty": "easy",
+  "notes": "Standard crop for the region; equipment and buyers usually available.",
+  "perennial": false
+ },
+ {
+  "crop": "Barley",
+  "seasonStart": 10,
+  "seasonEnd": 6,
+  "criticalMonths": [
+   5,
+   6
+  ],
+  "waterNeedMm": 400,
+  "heatLimitC": 21.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 5.0,
+  "priceEurT": 180,
+  "costEurHa": 600,
+  "switchDifficulty": "easy",
+  "notes": "Similar machinery to wheat; feed and malting buyers.",
+  "perennial": false
+ },
+ {
+  "crop": "Rapeseed",
+  "seasonStart": 9,
+  "seasonEnd": 6,
+  "criticalMonths": [
+   4,
+   5
+  ],
+  "waterNeedMm": 450,
+  "heatLimitC": 20.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 3.0,
+  "priceEurT": 450,
+  "costEurHa": 750,
+  "switchDifficulty": "medium",
+  "notes": "Needs moisture at autumn sowing; dry autumns cause poor establishment.",
+  "perennial": false
+ },
+ {
+  "crop": "Corn",
+  "seasonStart": 4,
+  "seasonEnd": 9,
+  "criticalMonths": [
+   7,
+   8
+  ],
+  "waterNeedMm": 600,
+  "heatLimitC": 26.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 7.0,
+  "priceEurT": 190,
+  "costEurHa": 900,
+  "switchDifficulty": "easy",
+  "notes": "High water demand in July–August; most exposed to summer drought.",
+  "perennial": false
+ },
+ {
+  "crop": "Sunflower",
+  "seasonStart": 4,
+  "seasonEnd": 9,
+  "criticalMonths": [
+   7,
+   8
+  ],
+  "waterNeedMm": 450,
+  "heatLimitC": 27.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 2.5,
+  "priceEurT": 400,
+  "costEurHa": 550,
+  "switchDifficulty": "easy",
+  "notes": "Deep roots, copes with dry summers; avoid growing it more often than every 4 years (diseases).",
+  "perennial": false
+ },
+ {
+  "crop": "Soybean",
+  "seasonStart": 5,
+  "seasonEnd": 9,
+  "criticalMonths": [
+   7,
+   8
+  ],
+  "waterNeedMm": 500,
+  "heatLimitC": 26.0,
+  "legume": true,
+  "nFixedKgHa": 80,
+  "yieldTHa": 2.8,
+  "priceEurT": 380,
+  "costEurHa": 600,
+  "switchDifficulty": "medium",
+  "notes": "Needs seed inoculant and enough summer moisture; check local buyers.",
+  "perennial": false
+ },
+ {
+  "crop": "Peas",
+  "seasonStart": 3,
+  "seasonEnd": 7,
+  "criticalMonths": [
+   5,
+   6
+  ],
+  "waterNeedMm": 350,
+  "heatLimitC": 21.0,
+  "legume": true,
+  "nFixedKgHa": 60,
+  "yieldTHa": 3.0,
+  "priceEurT": 280,
+  "costEurHa": 500,
+  "switchDifficulty": "medium",
+  "notes": "Fixes nitrogen and is harvested early (before summer heat). Check for a local buyer (feed or food).",
+  "perennial": false
+ },
+ {
+  "crop": "Sorghum",
+  "seasonStart": 5,
+  "seasonEnd": 9,
+  "criticalMonths": [
+   7,
+   8
+  ],
+  "waterNeedMm": 400,
+  "heatLimitC": 30.0,
+  "legume": false,
+  "nFixedKgHa": 0,
+  "yieldTHa": 5.0,
+  "priceEurT": 170,
+  "costEurHa": 550,
+  "switchDifficulty": "medium",
+  "notes": "Very drought and heat tolerant; smaller market, check grain buyers nearby.",
+  "perennial": false
+ },
+ {
+  "crop": "Alfalfa",
+  "seasonStart": 4,
+  "seasonEnd": 9,
+  "criticalMonths": [
+   7,
+   8
+  ],
+  "waterNeedMm": 800,
+  "heatLimitC": 28.0,
+  "legume": true,
+  "nFixedKgHa": 150,
+  "yieldTHa": 9.0,
+  "priceEurT": 150,
+  "costEurHa": 600,
+  "switchDifficulty": "hard",
+  "notes": "Fixes a lot of nitrogen and covers the soil for years, but needs hay equipment and a livestock or feed buyer.",
+  "perennial": true
+ },
+ {
+  "crop": "Cover crop",
+  "seasonStart": 9,
+  "seasonEnd": 4,
+  "criticalMonths": [
+   3,
+   4
+  ],
+  "waterNeedMm": 150,
+  "heatLimitC": 30.0,
+  "legume": true,
+  "nFixedKgHa": 40,
+  "yieldTHa": 0.0,
+  "priceEurT": 0,
+  "costEurHa": 80,
+  "switchDifficulty": "easy",
+  "notes": "Protects bare soil over winter and adds organic matter. In dry springs it can use soil moisture, so terminate it early.",
+  "perennial": false
+ }
+]

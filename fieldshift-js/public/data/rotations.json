@@ -1,0 +1,103 @@
+{
+ "Wheat > Sunflower": {
+  "plan": [
+   "Wheat",
+   "Sunflower"
+  ],
+  "type": "traditional"
+ },
+ "Wheat > Corn": {
+  "plan": [
+   "Wheat",
+   "Corn"
+  ],
+  "type": "traditional"
+ },
+ "Wheat > Rapeseed > Sunflower": {
+  "plan": [
+   "Wheat",
+   "Rapeseed",
+   "Sunflower"
+  ],
+  "type": "traditional"
+ },
+ "Wheat > Wheat (monoculture)": {
+  "plan": [
+   "Wheat",
+   "Wheat"
+  ],
+  "type": "traditional"
+ },
+ "Corn > Corn (monoculture)": {
+  "plan": [
+   "Corn",
+   "Corn"
+  ],
+  "type": "traditional"
+ },
+ "Wheat > Cover crop + Sunflower": {
+  "plan": [
+   "Wheat",
+   "Cover crop+Sunflower"
+  ],
+  "type": "moisture"
+ },
+ "Wheat > Cover crop + Sorghum": {
+  "plan": [
+   "Wheat",
+   "Cover crop+Sorghum"
+  ],
+  "type": "moisture"
+ },
+ "Barley > Cover crop + Sunflower > Wheat": {
+  "plan": [
+   "Barley",
+   "Cover crop+Sunflower",
+   "Wheat"
+  ],
+  "type": "moisture"
+ },
+ "Wheat > Peas > Sunflower": {
+  "plan": [
+   "Wheat",
+   "Peas",
+   "Sunflower"
+  ],
+  "type": "nitrogen"
+ },
+ "Wheat > Soybean > Corn": {
+  "plan": [
+   "Wheat",
+   "Soybean",
+   "Corn"
+  ],
+  "type": "nitrogen"
+ },
+ "Alfalfa (3 yrs) > Wheat > Sunflower": {
+  "plan": [
+   "Alfalfa",
+   "Alfalfa",
+   "Alfalfa",
+   "Wheat",
+   "Sunflower"
+  ],
+  "type": "nitrogen"
+ },
+ "Wheat > Sorghum > Peas": {
+  "plan": [
+   "Wheat",
+   "Sorghum",
+   "Peas"
+  ],
+  "type": "drought"
+ },
+ "Rapeseed > Wheat > Peas > Sunflower": {
+  "plan": [
+   "Rapeseed",
+   "Wheat",
+   "Peas",
+   "Sunflower"
+  ],
+  "type": "diversified"
+ }
+}

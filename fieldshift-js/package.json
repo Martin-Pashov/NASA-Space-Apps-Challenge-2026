@@ -1,0 +1,21 @@
+{
+  "name": "fieldshift",
+  "version": "1.0.0",
+  "description": "Crop rotation planner using NASA and ESA data (NASA Space Apps 2026)",
+  "main": "server.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chart.js": "^4.6.1",
+    "express": "^4.22.3",
+    "leaflet": "1.9"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
+}
