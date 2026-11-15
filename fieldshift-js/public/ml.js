@@ -117,7 +117,8 @@ export function predictSeason({ climate, cy, crops, recent, forecast, today = ne
     const base = mean(years.map(y => (label(c.crop, y) ? 1 : 0)));
     const { p, near } = knn(c.crop, zNow, years);
     const risk = Math.round((1 - p) * 100);
-    return { crop: c.crop, p, base, risk, level: risk >= 60 ? 'high' : risk >= 30 ? 'medium' : 'low', analogs: near, shift: p - base };
+    // each similar season carries its own weather, so the app can explain why it is similar
+    return { crop: c.crop, p, base, risk, level: risk >= 60 ? 'high' : risk >= 30 ? 'medium' : 'low', analogs: near.map(a => ({ ...a, feat: feats[a.year] })), shift: p - base };
   });
 
   const pct = nm => { const v = Math.round((nowFeat[nm] / stats[nm].m - 1) * 100); return `${v >= 0 ? '+' : ''}${v}%`; };
@@ -130,6 +131,8 @@ export function predictSeason({ climate, cy, crops, recent, forecast, today = ne
   };
   return {
     ok: true, harvestYear, usedForecast, k: SETTINGS.k, nYears: years.length,
+    now: nowFeat, normal: Object.fromEntries(names.map(n => [n, stats[n].m])), featureNames: names,
+    windows: { sowing: span(sowWin), recharge: rechLabel },
     features: names.map(nm => describe[nm]),
     perCrop: perCrop.sort((a, b) => a.risk - b.risk),
     byCrop: Object.fromEntries(perCrop.map(x => [x.crop, x])),

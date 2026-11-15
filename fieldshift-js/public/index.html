@@ -125,6 +125,7 @@
         <button id="analyze" class="btn primary big" disabled>Analyse my field</button>
         <p id="goHint" class="muted">Select a field on the map first.</p>
         <p class="muted small">Free, no account. Usually takes 5–60 seconds.</p>
+        <p class="agronomist-note">FieldShift gives advice. It does not replace your own experience or your local agronomist.</p>
       </div>
       <div class="wiz-foot only-back">
         <button type="button" class="btn ghost back" data-go="2">← Back</button>
@@ -171,7 +172,7 @@
     </div>
     <p class="history-line detail-only" id="historyLabel"></p>
 
-    <div class="agronomist" role="note"><p>This is advice. Always check with your agronomist.</p></div>
+    <div class="agronomist" role="note"><p><b>FieldShift helps you decide. It does not replace your own experience or your local agronomist.</b> Always check with them before you change crops, spray or fertilise.</p></div>
 
 
     <section id="answer" class="card answer"></section>
@@ -295,7 +296,7 @@
       <p><b>Alerts:</b> the 7-day forecast (ECMWF and DWD ICON models) is checked for hail (thunderstorm with hail codes), heavy rain and floods, frost, heat, drought and storms; the latest Sentinel-2 image is compared with the same weeks in earlier years to spot a sudden drop in greenness (pests, disease, nutrient shortage or drought); and a pest model checks each crop's main pests against the forecast temperature and rain. Levels: URGENT (call + SMS), WARNING (SMS), RECOMMENDATION and INFO (in the app).</p>
       <p><b>Validation:</b> every data source is checked for missing or impossible values before it's used or saved in the cache, crop names are spell-checked and looked up in the GBIF plant database, and the results are checked for consistency.</p>
     </details>
-    <p class="disclaimer">Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. </p>
+    <p class="disclaimer"><b>FieldShift supports your decision; it does not replace local knowledge or a local agronomist.</b><br>Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. </p>
   </div>
 
   <script type="module" src="app.js"></script>

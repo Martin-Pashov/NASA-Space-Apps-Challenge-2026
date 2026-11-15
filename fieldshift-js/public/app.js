@@ -913,10 +913,11 @@ function renderPrediction() {
     </div>
     <div class="detail-only">
       <h3 class="sub">What the model sees this season</h3>${list(pred.features.map(esc))}
+      ${analogWhy(pred, crop)}
       <h3 class="sub">Chance of a good season by crop</h3>
-      <div class="table-wrap"><table><tr><th>Crop</th><th>This season</th><th>Average year</th><th>Change</th><th>Risk</th><th>Most similar past seasons (✓ good, ✗ bad)</th></tr>
-      ${rows.map(x => `<tr><td>${esc(x.crop)}</td><td>${r0(x.p * 100)}%</td><td>${r0(x.base * 100)}%</td><td class="${x.shift < -0.05 ? 'mismatch' : x.shift > 0.05 ? 'ok' : ''}">${x.shift >= 0 ? '+' : ''}${r0(x.shift * 100)}</td><td><span class="chip ${x.level === 'low' ? 'better' : x.level === 'high' ? 'worse' : 'similar'}">${word[x.level]}</span></td>
-        <td class="analogs">${x.analogs.slice(0, 6).map(a => `<span class="${a.ok ? 'ok' : 'bad'}">${a.year} ${a.ok ? '✓' : '✗'}</span>`).join(' ')}</td></tr>`).join('')}</table></div>
+      <div class="table-wrap"><table><tr><th>Crop</th><th>This season</th><th>Average year</th><th>Change</th><th>Outlook</th><th>Most similar past seasons (✓ good, ✗ bad)</th></tr>
+      ${rows.map(x => `<tr><td>${esc(x.crop)}</td><td>${r0(x.p * 100)}%</td><td>${r0(x.base * 100)}%</td><td class="${x.shift < -0.05 ? 'mismatch' : x.shift > 0.05 ? 'ok' : ''}">${x.shift >= 0 ? '+' : ''}${r0(x.shift * 100)}</td><td><span class="chip ${x.p >= 0.75 ? 'better' : x.p >= 0.55 ? 'similar' : 'worse'}">${chanceWord(x.p)[0].toUpperCase() + chanceWord(x.p).slice(1)}</span></td>
+        <td class="analogs">${x.analogs.slice(0, 6).map(a => `<span class="${a.ok ? 'ok' : 'bad'}" title="${esc(seasonCause(x.crop, a.year))}">${a.year} ${a.ok ? '✓' : '✗'}</span>`).join(' ')}</td></tr>`).join('')}</table></div>
       <h3 class="sub">How good is the model? (retrospective test)</h3>
       <p>Every one of ${ev.tests} past crop-seasons was predicted from the other years only (leave-one-out). Right <b>${r0(ev.accuracy * 100)}%</b> of the time, vs ${r0(ev.baseAccuracy * 100)}% when you just assume an average year. Brier skill score ${ev.skill >= 0 ? '+' : ''}${ev.skill.toFixed(2)} (above 0 = better than the long-term average).</p>
       <div class="table-wrap"><table><tr><th>Predicting in</th>${pred.backtest.map(b => `<th>${b.month}</th>`).join('')}</tr>
@@ -924,6 +925,35 @@ function renderPrediction() {
         <tr><td>Skill vs average</td>${pred.backtest.map(b => `<td class="${b.skill > 0.05 ? 'ok' : ''}">${b.skill >= 0 ? '+' : ''}${b.skill.toFixed(2)}</td>`).join('')}</tr></table></div>
       <p class="muted">Honest reading: in autumn the model is only a little better than the long-term average, because next summer's rain is still unknown. It gets clearly better through winter and spring as the soil fills up (or doesn't). Method: analog-year k-nearest neighbours (k = ${pred.k}) on rain before sowing, rain since October and temperature, labels from the NASA POWER stress test.</p>
     </div>`;
+}
+
+// Why a past season was good or bad for a crop, in words (from the stress test)
+function seasonCause(crop, year) {
+  const r = state.ctx.cy.rows.find(x => x.crop === crop && x.year === year);
+  if (!r) return '';
+  if (r.ok) return `${year}: good season for ${crop}`;
+  const why = [!r.sowOk && 'too dry at sowing', !r.keyOk && `dry winter and spring (${Math.round(r.keyWater / r.keyNormal * 100)}% of normal rain)`,
+    r.keyOk && !r.waterOk && 'too little rain while growing', !r.heatOk && `too hot (${r.peakTemp.toFixed(1)} °C)`].filter(Boolean);
+  return `${year}: bad season for ${crop}: ${why.join(', ')}`;
+}
+
+// The "why" behind the prediction: how this season compares with the most similar past ones, and how they ended
+function analogWhy(pred, crop) {
+  const m = pred.byCrop[crop], now = pred.now, nrm = pred.normal;
+  const pct = (v, n) => `${v >= n ? '+' : ''}${Math.round((v / n - 1) * 100)}%`;
+  const col = k => pred.featureNames.includes(k);
+  const rows = m.analogs.slice(0, 6);
+  const bad = rows.filter(a => !a.ok);
+  const dryNow = col('sowing') && now.sowing < nrm.sowing * 0.8, dryOct = col('recharge') && now.recharge < nrm.recharge * 0.8;
+  const dryParts = [dryNow && `only ${Math.round(now.sowing)} mm of rain before sowing (${pct(now.sowing, nrm.sowing)})`, dryOct && `${Math.round(now.recharge)} mm since October (${pct(now.recharge, nrm.recharge)})`].filter(Boolean);
+  const intro = `${dryParts.length ? `This autumn is dry so far: ${dryParts.join(' and ')}.` : 'This autumn has about normal rain so far.'}
+    The past seasons that started most like this one are ${rows.slice(0, 3).map(a => a.year).join(', ')}.
+    ${bad.length ? `${bad.length} of the ${rows.length} most similar ended badly for ${esc(crop)} (reasons in the table).` : `All of them ended well for ${esc(crop)}.`}
+    That's why the chance is ${r0(m.p * 100)}% instead of the usual ${r0(m.base * 100)}%.${m.p < m.base ? ' Good rain this winter would raise it again.' : ''}`;
+  return `<h3 class="sub">Why this prediction</h3><p>${intro}</p>
+    <div class="table-wrap"><table><tr><th>Similar season</th>${col('sowing') ? `<th>Rain before sowing<br><small>now ${Math.round(now.sowing)} mm</small></th>` : ''}${col('recharge') ? `<th>Rain since October<br><small>now ${Math.round(now.recharge)} mm</small></th>` : ''}${col('temp') ? `<th>Temperature<br><small>now ${now.temp.toFixed(1)} °C</small></th>` : ''}<th>How it ended for ${esc(crop)}</th></tr>
+    ${rows.map(a => `<tr><td><b>${a.year}</b></td>${col('sowing') ? `<td>${Math.round(a.feat.sowing)} mm (${pct(a.feat.sowing, nrm.sowing)})</td>` : ''}${col('recharge') ? `<td>${Math.round(a.feat.recharge)} mm (${pct(a.feat.recharge, nrm.recharge)})</td>` : ''}${col('temp') ? `<td>${a.feat.temp.toFixed(1)} °C</td>` : ''}<td class="${a.ok ? 'ok' : 'mismatch'}">${a.ok ? '✓ Good' : `✗ ${esc(seasonCause(crop, a.year).split(': ').slice(2).join(': '))}`}</td></tr>`).join('')}
+    </table></div><p class="muted">Rain in brackets: compared with the average of all ${pred.nYears} seasons. Recharge window: ${esc(pred.windows.recharge)}.</p>`;
 }
 
 // ================= PESTS, DISEASES AND FERTILIZER =================
