@@ -1,3 +1,4 @@
+import { OVERPASS_MIRRORS, overpassQuery, parseOverpass, osmMapUrl, parseOsmMap } from '../public/geo.js';
 // All external data sources. Each function returns small, clean JSON.
 // Everything is fetched live for the chosen location, so results are always current.
 
@@ -184,31 +185,33 @@ export async function getSentinel(geometry) {
 
 // ---------- OpenStreetMap Overpass: auto-detect the field shape ----------
 // Finds farmland polygons that contain the point and returns the smallest one.
-export async function getParcel(lat, lon) {
-  const tags = '^(farmland|farmyard|orchard|vineyard|meadow|grass|plant_nursery)$';
-  const query = `[out:json][timeout:25];is_in(${lat},${lon})->.a;(way(pivot.a)[landuse~"${tags}"];rel(pivot.a)[landuse~"${tags}"];);out geom;`;
-  const res = await fetch('https://overpass-api.de/api/interpreter', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
-    body: new URLSearchParams({ data: query }),
-    signal: timeout(30000),
-  });
-  if (!res.ok) throw new Error(`Overpass ${res.status}`);
+const why = err => `${err.message}${err.cause ? ` (${err.cause.code || err.cause.message})` : ''}`;
 
-  const shapes = [];
-  for (const el of (await res.json()).elements ?? []) {
-    let pts = null;
-    if (el.type === 'way' && el.geometry) pts = el.geometry;
-    if (el.type === 'relation') {
-      const outers = (el.members ?? []).filter(m => m.role === 'outer' && m.geometry);
-      if (outers.length === 1) pts = outers[0].geometry;
-    }
-    if (!pts || pts.length < 4) continue;
-    const ring = pts.map(p => [p.lon, p.lat]);
-    if (ring[0][0] !== ring.at(-1)[0] || ring[0][1] !== ring.at(-1)[1]) ring.push(ring[0]);
-    shapes.push({ geometry: { type: 'Polygon', coordinates: [ring] }, landuse: el.tags?.landuse });
+export async function getParcel(lat, lon) {
+  const errors = [];
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': UA },
+        body: new URLSearchParams({ data: overpassQuery(lat, lon) }),
+        signal: timeout(8000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return parseOverpass(await res.json());
+    } catch (err) { errors.push(`${new URL(url).host}: ${why(err)}`); }
   }
-  return shapes;
+  // backup: the main OpenStreetMap API (a small box first, then a bigger one for large fields)
+  for (const d of [0.008, 0.02]) {
+    try {
+      const res = await fetch(osmMapUrl(lat, lon, d), { headers: { 'User-Agent': UA }, signal: timeout(15000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const shapes = parseOsmMap(await res.json(), lat, lon);
+      if (shapes.length) return shapes;
+      if (d === 0.02) return [];
+    } catch (err) { errors.push(`api.openstreetmap.org: ${why(err)}`); break; }
+  }
+  throw new Error(errors.join('; '));
 }
 
 // ---------- OpenStreetMap Nominatim: address search ----------

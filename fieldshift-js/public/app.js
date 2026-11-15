@@ -13,14 +13,20 @@ const charts = {};
 // ================= RECENT FIELDS (localStorage) =================
 
 const RECENT_KEY = 'fieldshift.recent';
-const loadRecent = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch { return []; } };
+const loadRecent = () => {
+  let list;
+  try { list = JSON.parse(localStorage.getItem(RECENT_KEY)) || []; } catch { return []; }
+  // drop near-duplicates (the same field saved twice with slightly different corners)
+  return list.filter((r, i) => !list.slice(0, i).some(o => o.center && r.center && Math.abs(o.center.lat - r.center.lat) < 0.002 && Math.abs(o.center.lon - r.center.lon) < 0.003));
+};
 const saveRecent = list => { try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 10))); } catch { /* storage unavailable */ } };
 
 function rememberField() {
   const f = state.field;
   const entry = { name: state.placeName || 'Field', geometry: f.geometry, areaHa: f.areaHa, center: f.center, date: new Date().toISOString() };
   const key = JSON.stringify(f.geometry.coordinates);
-  saveRecent([entry, ...loadRecent().filter(r => JSON.stringify(r.geometry.coordinates) !== key)]);
+  const near = r => r.center && f.center && Math.abs(r.center.lat - f.center.lat) < 0.002 && Math.abs(r.center.lon - f.center.lon) < 0.003;
+  saveRecent([entry, ...loadRecent().filter(r => JSON.stringify(r.geometry.coordinates) !== key && !near(r))]);
   renderRecent();
 }
 
@@ -234,7 +240,7 @@ async function analyze() {
     setStep('compare', 'done', { ms: performance.now() - t });
     $('progressNote').textContent = 'Done!';
     await new Promise(r => setTimeout(r, 700)); // let the farmer see everything finished
-    $('progress').hidden = true; $('results').hidden = false; window.scrollTo(0, 0);
+    $('progress').hidden = true; $('results').hidden = false; window.scrollTo(0, 0); watchSections();
   } catch (err) {
     $('progressNote').textContent = `Something went wrong: ${err.message}`;
     $('progressBack').hidden = false;
@@ -266,6 +272,8 @@ function setUnit(u) {
 }
 
 // ================= RESULTS =================
+
+if (window.Chart) { Chart.defaults.font.family = "'Golos Text', 'Segoe UI', system-ui, sans-serif"; Chart.defaults.color = '#6b665e'; Chart.defaults.borderColor = '#e7e9e2'; }
 
 function drawChart(id, config) {
   charts[id]?.destroy();
@@ -299,7 +307,7 @@ function prepare() {
     sum, soil, beginner, rotations, currentName, currentLabel, lastCrop, known, recent, field,
     terrain: d.terrain.ok ? d.terrain.data : null,
     cy: A.cropYears(d.climate.data, crops, soil.awcMm),
-    cyFuture: A.cropYears(A.applyFuture(d.climate.data, sum, 2035), crops, soil.awcMm),
+    cyFuture: A.cropYears(A.applyFuture(d.climate.data, sum, 2035), crops, soil.awcMm, d.climate.data),
     autumn: A.autumnCheck(recent, crops),
   };
 }
@@ -309,7 +317,7 @@ function renderAll() {
   document.querySelectorAll('.unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === state.unit));
   $('placeName').textContent = state.placeName || 'Your field';
   $('coords').textContent = `${areaTxt(d.areaHa)} · ${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}`;
-  $('historyLabel').textContent = c.beginner ? 'Starting out' : `You grew: ${state.history.map(h => `${h.year} ${h.label}`).join(', ')}`;
+  $('historyLabel').textContent = c.beginner ? 'Starting out on this land.' : `You grew: ${state.history.map(h => `${h.year} ${h.label}`).join(', ')}`;
   $('basics').hidden = !c.beginner;
 
   const currentPlan = c.rotations[c.currentName].plan;
@@ -321,6 +329,35 @@ function renderAll() {
   renderAdjust();
   renderOwnNumbers();
   renderStrategies();
+  renderPastYears();
+}
+
+// Year-by-year check: lets you compare the model with real yields for a specific year
+function renderPastYears() {
+  const c = state.ctx, sel = $('pastCrop');
+  const names = [...new Set(c.cy.rows.map(r => r.crop))].sort();
+  if (!names.includes(state.pastCrop)) state.pastCrop = names.includes(c.lastCrop) ? c.lastCrop : names.includes('Wheat') ? 'Wheat' : names[0];
+  sel.innerHTML = names.map(n => `<option${n === state.pastCrop ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  sel.onchange = () => { state.pastCrop = sel.value; renderPastYears(); };
+
+  const crop = state.crops.find(x => x.crop === state.pastCrop);
+  const rows = c.cy.rows.filter(r => r.crop === state.pastCrop).sort((a, b) => b.year - a.year);
+  const autumn = A.isAutumnSown(crop);
+  const good = rows.filter(r => r.ok).length;
+  const cause = r => [!r.sowOk && 'too dry at sowing', !r.keyOk && 'dry winter and spring', r.keyOk && !r.waterOk && 'too little rain while growing', !r.heatOk && 'too hot'].filter(Boolean).join(', ');
+  const need = Math.round((rows[0]?.need ?? 0) * 0.75);
+  const normal = Math.round(rows[0]?.keyNormal ?? 0), minKey = Math.round((rows[0]?.keyNormal ?? 0) * 0.8);
+  $('pastTable').innerHTML = `<caption class="muted">${good} good seasons out of ${rows.length}. A season is bad if any check fails (red).</caption>
+    <tr><th>Year</th>${autumn ? `<th>Rain at sowing<br><small>need ${crop.sowRainMm} mm</small></th>` : ''}
+    <th>Rain ${rows[0]?.keyMonths ?? ''}<br><small>normal ${normal} mm, need ${minKey}</small></th>
+    <th>Season rain + soil water<br><small>need ${need} mm</small></th>
+    <th>Hottest key month<br><small>limit ${crop.heatLimitC} °C</small></th><th>Result</th></tr>` +
+    rows.map(r => `<tr><td>${r.year}</td>
+      ${autumn ? `<td class="${r.sowOk ? '' : 'mismatch'}">${r.sowRain == null ? '–' : Math.round(r.sowRain) + ' mm'}</td>` : ''}
+      <td class="${r.keyOk ? '' : 'mismatch'}">${Math.round(r.keyWater)} mm (${Math.round(r.keyWater / r.keyNormal * 100)}%)</td>
+      <td class="${!r.keyOk || r.waterOk ? '' : 'mismatch'}">${Math.round(r.seasonRain + r.awcMm)} mm</td>
+      <td class="${r.heatOk ? '' : 'mismatch'}">${r.peakTemp.toFixed(1)} °C</td>
+      <td>${r.ok ? '✅ Good' : `❌ Bad: ${cause(r)}`}</td></tr>`).join('');
 }
 
 function renderSatHistory() {
@@ -330,7 +367,7 @@ function renderSatHistory() {
   if (!rows.length) return;
   const label = { autumn: 'Autumn-sown crop (green in March–April, like wheat, barley, rapeseed)', spring: 'Spring crop (bare in spring, like sunflower, corn)', bare: 'Mostly bare' };
   const mismatches = rows.filter(r => r.match === false);
-  box.innerHTML = `<h2>What grew here: satellites vs your memory</h2>
+  box.innerHTML = `<h2>${state.ctx.beginner ? 'What grew here in recent years (seen from space)' : 'What grew here: satellites vs your memory'}</h2>
     <p class="muted">Satellites can tell crops sown in autumn from crops sown in spring, because autumn crops are already green in March–April.</p>
     ${mismatches.length ? `<p class="insight warn">In ${mismatches.map(r => r.year).join(', ')} the satellites saw something different from what you entered. Please check: the recommendations use your history.</p>` : (state.ctx.beginner ? '' : '<p class="insight good">The satellites agree with the history you entered.</p>')}
     <div class="table-wrap"><table class="sat-table"><tr><th>Year</th><th>Satellites saw</th>${state.ctx.beginner ? '' : '<th>You entered</th><th></th>'}</tr>
@@ -344,8 +381,8 @@ function renderCharts() {
   if (sent.length) {
     const yearTick = (_, i) => { const date = sent[i]?.date; return date && (i === 0 || sent[i - 1].date.slice(0, 4) !== date.slice(0, 4)) ? date.slice(0, 4) : ''; };
     drawChart('fieldChart', { type: 'line', data: { labels: sent.map(r => r.date), datasets: [
-      { label: 'Greenness', data: sent.map(r => r.ndvi), borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,.12)', fill: true, pointRadius: 0, tension: 0.3 },
-      { label: 'Moisture', data: sent.map(r => r.ndmi), borderColor: '#378ADD', pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
+      { label: 'Greenness', data: sent.map(r => r.ndvi), borderColor: '#2f6b3a', backgroundColor: 'rgba(47,107,58,.12)', fill: true, pointRadius: 0, tension: 0.3 },
+      { label: 'Moisture', data: sent.map(r => r.ndmi), borderColor: '#2f6690', pointRadius: 0, tension: 0.3, borderWidth: 1.5 },
     ] }, options: { scales: { x: { ticks: { autoSkip: false, maxRotation: 0, callback: yearTick } } } } });
     $('fieldChartNote').textContent = d.sentinel.backup ? 'Showing the last saved satellite data (live request failed).' : '';
   } else {
@@ -354,19 +391,19 @@ function renderCharts() {
   }
   if (c.recent) {
     drawChart('rainChart', { type: 'bar', data: { labels: c.recent.months.map(m => m.label), datasets: [
-      { label: 'Rain this year', data: c.recent.months.map(m => r0(m.rain)), backgroundColor: '#378ADD' },
-      { label: 'Normal year', data: c.recent.months.map(m => r0(m.normal)), type: 'line', borderColor: '#444441', pointRadius: 2 },
+      { label: 'Rain this year', data: c.recent.months.map(m => r0(m.rain)), backgroundColor: '#2f6690', borderRadius: 3 },
+      { label: 'Normal year', data: c.recent.months.map(m => r0(m.normal)), type: 'line', borderColor: '#2b241d', backgroundColor: '#2b241d', pointRadius: 2 },
     ] } });
   }
   drawChart('tempChart', { type: 'line', data: { labels: c.sum.years, datasets: [
-    { label: 'Avg temp', data: c.sum.yearlyTemp.map(t => +t.toFixed(1)), borderColor: '#D85A30', pointRadius: 0, tension: 0.3 },
+    { label: 'Avg temp', data: c.sum.yearlyTemp.map(t => +t.toFixed(1)), borderColor: '#9e3b2e', pointRadius: 0, tension: 0.3 },
   ] }, options: { plugins: { legend: { display: false } } } });
   const n = c.cy.years.length;
   const ranks = A.rankCrops(c.cy, state.crops).slice(0, 14);
   const okN = (cy, name) => cy.rows.filter(r => r.crop === name && r.ok).length;
   drawChart('cropChart', { type: 'bar', data: { labels: ranks.map(r => r.crop), datasets: [
-    { label: `Good seasons (of ${n})`, data: ranks.map(r => okN(c.cy, r.crop)), backgroundColor: '#1D9E75' },
-    { label: 'By 2035 (trend)', data: ranks.map(r => okN(c.cyFuture, r.crop)), backgroundColor: '#EF9F27' },
+    { label: `Good seasons (of ${n})`, data: ranks.map(r => okN(c.cy, r.crop)), backgroundColor: '#2f6b3a', borderRadius: 3 },
+    { label: 'By 2035 (trend)', data: ranks.map(r => okN(c.cyFuture, r.crop)), backgroundColor: '#e0b12f', borderRadius: 3 },
   ] }, options: { indexAxis: 'y', scales: { x: { max: n, ticks: { stepSize: 4 } } } } });
 }
 
@@ -401,6 +438,8 @@ function renderOwnNumbers(names) {
   $('resetOwn').addEventListener('click', () => { state.overrides = {}; renderOwnNumbers(); renderStrategies(); });
 }
 
+const VERDICT_ORDER = { better: 0, now: 1, similar: 2, worse: 3 };
+
 function renderStrategies() {
   const c = state.ctx, crops = effectiveCrops(), weights = state.weights;
   const ranked = A.scoreRotations({ rotations: c.rotations, crops, cy: c.cy, cyFuture: c.cyFuture, soil: c.soil, field: c.field, weights, known: c.known });
@@ -417,10 +456,16 @@ function renderStrategies() {
   const n = c.cy.years.length;
 
   // ---- answer card
+  const sug = keep || !best ? current : best; // the rotation the answer card recommends
   const ans = A.buildAnswer({ best, current, lastCrop: c.lastCrop, crops, cy: c.cy, autumn: c.autumn, money, beginner: c.beginner, keep });
   const eyebrow = c.beginner ? 'Our suggestion to start' : keep ? 'Your rotation already fits well' : mono ? `Growing only ${current.mains[0]} is costing you` : 'Our suggestion';
   $('answer').innerHTML = `<div class="eyebrow">${eyebrow}</div>
     <h2>${esc(ans.title)}</h2><p class="when">🗓️ ${esc(ans.when)}</p>
+    <div class="facts">
+      <div class="fact"><span>Good seasons</span><b>${r0(sug.risk)}%</b></div>
+      <div class="fact"><span>Normal year</span><b>${money(sug.profitNormal)}</b></div>
+      <div class="fact"><span>Bad year (1 in 10)</span><b>${money(sug.profitBad)}</b></div>
+    </div>
     ${list(ans.reasons.map(esc))}
     ${ans.how ? `<div class="how">🌱 ${esc(ans.how)}</div>` : ''}
     ${ans.tradeOff ? `<div class="risk">💶 ${esc(ans.tradeOff)}</div>` : ''}
@@ -490,8 +535,24 @@ function renderStrategies() {
   $('gaps').innerHTML = A.infoGaps({ field: c.field, soil: c.soil, weights, newCrops: [...allNew] }).map(g => `<li>${g}</li>`).join('');
 
   $('ranking').innerHTML = '<tr><th>#</th><th>Rotation</th><th>Fit</th><th>Good seasons</th><th>Normal year</th><th>Bad year</th><th>Bare months</th></tr>' +
-    ranked.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.rotation.replace(/^Your rotation: /, 'Yours: '))}</td><td><span class="chip ${A.verdict(r, current).key}">${A.verdict(r, current).text}</span></td>` +
+    // grouped like a farmer reads it: better options first, then yours, then similar, then worse
+    [...ranked].map(r => ({ r, v: A.verdict(r, current) }))
+      .sort((a, b) => VERDICT_ORDER[a.v.key] - VERDICT_ORDER[b.v.key] || b.r.score - a.r.score)
+      .map(({ r, v }, i) => `<tr><td>${i + 1}</td><td>${esc(r.rotation.replace(/^Your rotation: /, 'Yours: '))}</td><td><span class="chip ${v.key}">${v.key === 'now' && c.beginner ? 'Typical rotation' : v.text}</span></td>` +
       `<td>${r0(r.risk)}%</td><td>${money(r.profitNormal)}</td><td>${money(r.profitBad)}</td><td>${r.bare.toFixed(1)}</td></tr>`).join('');
+}
+
+// Section menu in the results header: highlight where you are, open "How it works" when jumped to
+let sectionObserver;
+function watchSections() {
+  const links = [...document.querySelectorAll('#sectionNav a')];
+  const byId = Object.fromEntries(links.map(a => [a.getAttribute('href').slice(1), a]));
+  links.forEach(a => a.onclick = () => { const t = $(a.getAttribute('href').slice(1)); if (t?.tagName === 'DETAILS') t.open = true; });
+  sectionObserver?.disconnect();
+  sectionObserver = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) links.forEach(a => a.classList.toggle('active', a === byId[e.target.id]));
+  }, { rootMargin: '-130px 0px -60% 0px' });
+  Object.keys(byId).forEach(id => $(id) && sectionObserver.observe($(id)));
 }
 
 // ================= START =================

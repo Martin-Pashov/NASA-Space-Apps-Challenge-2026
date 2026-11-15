@@ -1,8 +1,9 @@
 // Map: Bulgaria overview, province layer, and an editable field shape.
-import { areaHa, centroid, squareAround, contains } from './geo.js';
+import { areaHa, centroid, squareAround, contains, OVERPASS_MIRRORS, overpassQuery, parseOverpass, pickParcel, osmMapUrl, parseOsmMap } from './geo.js';
 
+const FIELD_ZOOM = 11; // zoomed in this far you're looking at fields: no province labels
 const BULGARIA = { center: [42.75, 25.35], zoom: 7 };
-const FIELD_STYLE = { color: '#1d9e75', weight: 3, fillColor: '#1d9e75', fillOpacity: 0.18 };
+const FIELD_STYLE = { color: '#e0b12f', weight: 3, fillColor: '#e0b12f', fillOpacity: 0.16 }; // ripe-wheat gold stands out on satellite imagery
 let map, fieldLayer = null, onChange = () => {}, requestId = 0;
 
 const hint = text => { const el = document.getElementById('mapHint'); el.textContent = text; el.hidden = !text; };
@@ -25,7 +26,8 @@ export async function initMap(changeHandler) {
     style: { color: '#ffffff', weight: 1.5, opacity: 0.9, fillColor: '#ffffff', fillOpacity: 0.03 },
     onEachFeature: (f, layer) => {
       layer.bindTooltip(`${f.properties.name_local || f.properties.name} <span style="opacity:.7">(${f.properties.name})</span>`, { sticky: true, className: 'province-label' });
-      layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.15, weight: 2.5 }));
+      layer.on('tooltipopen', () => { if (map.getZoom() >= FIELD_ZOOM) layer.closeTooltip(); });
+      layer.on('mouseover', () => { if (map.getZoom() < FIELD_ZOOM) layer.setStyle({ fillOpacity: 0.15, weight: 2.5 }); });
       layer.on('mouseout', () => provinces.resetStyle(layer));
       layer.on('click', e => {
         if (drawing()) return;
@@ -42,8 +44,8 @@ export async function initMap(changeHandler) {
   L.control.layers({ Satellite: satellite, Map: streets }, { 'Provinces (oblasti)': provinces }, { collapsed: false }).addTo(map);
 
   map.on('click', e => handleClick(e.latlng));
-  map.on('zoomend', () => { if (!fieldLayer) hint(map.getZoom() < 12 ? 'Zoom in and click on your field' : 'Click on your field to select it'); });
-  hint('Zoom in and click on your field');
+  map.on('zoomend', () => { if (!fieldLayer) hint(map.getZoom() < 12 ? 'Zoom in to your field' : 'Draw your field with ⬠ on the left, or click on it'); });
+  hint('Zoom in to your field');
 
   // Drawing tools (Leaflet-Geoman). The map still works without them.
   if (!map.pm) { console.warn('Drawing tools not loaded: run "npm install" in the fieldshift-js folder.'); return; }
@@ -70,13 +72,30 @@ async function selectAt(lat, lon) {
   const id = ++requestId;
   setFieldLayer(toLayer(squareAround(lat, lon, 300)), 'Looking for your field outline…');
   try {
-    const r = await (await fetch(`/api/parcel?lat=${lat}&lon=${lon}`)).json();
+    let r = await (await fetch(`/api/parcel?lat=${lat}&lon=${lon}`)).json();
     if (id !== requestId) return; // the user clicked somewhere else meanwhile
+    if (r.unavailable) r = (await parcelFromBrowser(lat, lon)) ?? r; // server couldn't reach OSM: try from the browser
+    if (id !== requestId) return;
     if (r.found) setFieldLayer(toLayer(r.geometry), `Outline found on OpenStreetMap (${r.landuse}). Drag the corners if it isn't quite right.`);
     else setFieldLayer(fieldLayer, `${r.reason} We drew a 300 × 300 m square. Drag the corners to fit your field.`);
   } catch {
     if (id === requestId) setFieldLayer(fieldLayer, 'We drew a 300 × 300 m square. Drag the corners to fit your field.');
   }
+}
+
+// Some networks block the server's requests to OpenStreetMap but not the browser's.
+async function parcelFromBrowser(lat, lon) {
+  for (const url of OVERPASS_MIRRORS) {
+    try {
+      const res = await fetch(url, { method: 'POST', body: new URLSearchParams({ data: overpassQuery(lat, lon) }), signal: AbortSignal.timeout(6000) });
+      if (res.ok) return pickParcel(parseOverpass(await res.json()));
+    } catch { /* try the next mirror */ }
+  }
+  try {
+    const res = await fetch(osmMapUrl(lat, lon, 0.01), { signal: AbortSignal.timeout(15000) });
+    if (res.ok) return pickParcel(parseOsmMap(await res.json(), lat, lon));
+  } catch { /* give up: the user can drag the square */ }
+  return null;
 }
 
 const toLayer = geometry => L.polygon(geometry.coordinates[0].slice(0, -1).map(([x, y]) => [y, x]), FIELD_STYLE);

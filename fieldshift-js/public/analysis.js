@@ -7,11 +7,27 @@
 const N_PRICE_EUR_KG = 1.0;      // rough nitrogen fertilizer price
 const FAIL_YIELD_SHARE = 0.5;    // failed season = half the normal yield
 const ENOUGH_WATER_SHARE = 0.75; // rain + soil water must cover 75% of crop need
+const KEY_WATER_SHARE = 0.8;     // winter + spring rain below 80% of this field's normal = drought year
 const COVER_WATER_USE_MM = 30;   // spring moisture a cover crop takes from the next crop
 const SAME_CROP_PENALTY = 0.15;
 // a crop after itself yields ~15% less and fails more often (diseases, pests)
 const SWITCH_FACTOR = { easy: 1, medium: 0.95, hard: 0.82 }; // hard-to-adopt crops count less unless already grown
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "Aug–Oct 2026", or "Dec 2025–Feb 2026" across a new year
+const periodLabel = (a, b) => {
+  if (!a || !b) return '';
+  const [ya, ma] = a.split('-').map(Number), [yb, mb] = b.split('-').map(Number);
+  return ya === yb ? `${MONTHS[ma - 1]}–${MONTHS[mb - 1]} ${yb}` : `${MONTHS[ma - 1]} ${ya}–${MONTHS[mb - 1]} ${yb}`;
+};
+
+// [8,9,10,11,0,1] -> "Sep–Feb"; month indexes 0..11, wraps over the new year
+function monthRanges(ms) {
+  const set = new Set(ms);
+  if (set.size === 12) return 'all year';
+  const start = [...set].filter(m => !set.has((m + 11) % 12));
+  return 'in ' + start.map(a => { let b = a; while (set.has((b + 1) % 12)) b = (b + 1) % 12; return a === b ? MONTHS[a] : `${MONTHS[a]}–${MONTHS[b]}`; }).join(' and ');
+}
 
 const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
@@ -81,7 +97,7 @@ export function recentVsNormal(recent, sum) {
   }
   const months = Object.keys(byMonth).sort().filter(k => byMonth[k].days >= 25).slice(-12).map(k => {
     const m = +k.slice(5) - 1;
-    return { key: k, label: `${MONTHS[m]} ${k.slice(2, 4)}`, rain: byMonth[k].rain, normal: sum.rainNormal[m],
+    return { key: k, label: `${MONTHS[m]} '${k.slice(2, 4)}`, rain: byMonth[k].rain, normal: sum.rainNormal[m],
       temp: mean(byMonth[k].temps), tempNormal: sum.tempNormal[m] };
   });
   const last3 = months.slice(-3);
@@ -89,7 +105,7 @@ export function recentVsNormal(recent, sum) {
   const r12 = months.reduce((s, x) => s + x.rain, 0), n12 = months.reduce((s, x) => s + x.normal, 0);
   return {
     months,
-    last3Pct: n3 ? (r3 / n3 - 1) * 100 : 0, last3Rain: r3, last3Normal: n3, last3Label: `${last3[0]?.label}–${last3.at(-1)?.label}`,
+    last3Pct: n3 ? (r3 / n3 - 1) * 100 : 0, last3Rain: r3, last3Normal: n3, last3Label: periodLabel(last3[0]?.key, last3.at(-1)?.key),
     last12Pct: n12 ? (r12 / n12 - 1) * 100 : 0,
     tempAnomaly: mean(months.map(x => x.temp - x.tempNormal)),
   };
@@ -210,12 +226,12 @@ export function buildInsights({ sum, recent, field, soil, terrain, cyNow, cyFutu
     const worst = dryAutumn.sort((a, b) => a.pct - b.pct)[0];
     add('warn', 'Dry sowing time this autumn',
       `${worst.months} ${worst.year} brought only ${r0(worst.rain)} mm of rain (${Math.abs(r0(worst.pct))}% below normal). ` +
-      `${dryAutumn.map(a => a.crop).slice(0, 3).join(', ')} sown this autumn may come up unevenly. Check how they emerged.`, 'NASA POWER');
+      `Too dry at sowing time this autumn for: ${dryAutumn.map(a => `${a.crop} (${a.months})`).join(', ')}. These may come up unevenly. Check how they emerged.`, 'NASA POWER');
   }
   if (field?.bareDays != null) {
     add(field.bareDays > 150 ? 'bad' : field.bareDays > 90 ? 'warn' : 'good', 'Bare soil',
       `Your field had no plant cover for about ${field.bareDays} days in the last 12 months` +
-      (field.bareMonths.length ? `, usually in ${field.bareMonths.map(m => MONTHS[m]).join(', ')}.` : '.') +
+      (field.bareMonths.length ? `, usually ${monthRanges(field.bareMonths)}.` : '.') +
       ' Bare soil loses water and topsoil to sun, wind and rain.', 'ESA Sentinel-2 (bare soil index + greenness)');
   }
   if (field && field.peakVals.length > 1) {
@@ -271,14 +287,29 @@ export function satelliteHistory(field, history, crops) {
 
 // =============== 4. STRESS TEST ===============
 
-export function cropYears(climate, crops, awcMm) {
+// baseClimate: what counts as a 'normal' year (today's climate, also for the 2035 outlook)
+export function cropYears(climate, crops, awcMm, baseClimate = climate) {
   const rain = {}, temp = {};
   for (const r of climate) { (rain[r.year] ??= {})[r.month] = r.rainMm; (temp[r.year] ??= {})[r.month] = r.temp; }
   const complete = Object.keys(rain).map(Number).filter(y => Object.keys(rain[y]).length === 12);
   const years = complete.filter(y => complete.includes(y - 1)).sort((a, b) => a - b);
 
+  // Water that actually reaches the crop when it matters: winter rain (Oct–Mar, refills the soil)
+  // plus rain from April until the end of the crop's sensitive months. Rain after that (e.g. June
+  // storms at wheat harvest) doesn't help. Checked against 2020 in Dobrudzha (wheat -68%, MZH report).
+  const baseRain = {};
+  for (const r of baseClimate) (baseRain[r.year] ??= {})[r.month] = r.rainMm;
+  const keyWater = (c, y, src = rain) => {
+    let w = 0;
+    for (const m of [10, 11, 12]) w += src[y - 1][m];
+    for (let m = 1; m <= Math.max(3, ...c.criticalMonths); m++) w += src[y][m];
+    return w;
+  };
+  const median = a => { const s = [...a].sort((p, q) => p - q); return (s[(s.length - 1) >> 1] + s[s.length >> 1]) / 2; };
+
   const rows = [];
   for (const c of crops) {
+    const normalKey = median(years.map(y => keyWater(c, y, baseRain)));
     for (const y of years) {
       let seasonRain = 0;
       for (const m of seasonMonths(c.seasonStart, c.seasonEnd)) {
@@ -289,8 +320,12 @@ export function cropYears(climate, crops, awcMm) {
       // autumn-sown crops also need some rain at sowing to establish (e.g. rapeseed in Aug–Sep)
       const sowYear = isAutumnSown(c) ? y - 1 : y;
       const sowRain = c.sowRainMonths ? c.sowRainMonths.reduce((a, m) => a + rain[sowYear][m], 0) : null;
+      const key = keyWater(c, y);
+      const enoughTotal = seasonRain + awcMm >= ENOUGH_WATER_SHARE * c.waterNeedMm;
+      const enoughKey = key >= KEY_WATER_SHARE * normalKey; // a drought year for THIS field
       rows.push({ crop: c.crop, year: y, seasonRain, peakTemp, sowRain, need: c.waterNeedMm, heatLimit: c.heatLimitC,
-        waterOk: seasonRain + awcMm >= ENOUGH_WATER_SHARE * c.waterNeedMm, heatOk: peakTemp <= c.heatLimitC,
+        keyWater: key, keyNormal: normalKey, keyMonths: `Oct–${MONTHS[Math.max(3, ...c.criticalMonths) - 1]}`,
+        keyOk: enoughKey, waterOk: enoughTotal && enoughKey, heatOk: peakTemp <= c.heatLimitC,
         sowOk: !c.sowRainMm || sowRain >= c.sowRainMm, awcMm });
     }
   }
@@ -306,7 +341,7 @@ function itemOk(cy, item, year) {
   const r = cy.rows.find(x => x.crop === main && x.year === year);
   if (!r) return false;
   if (!cover) return r.ok;
-  const waterOk = r.seasonRain - COVER_WATER_USE_MM + r.awcMm >= ENOUGH_WATER_SHARE * r.need;
+  const waterOk = r.seasonRain - COVER_WATER_USE_MM + r.awcMm >= ENOUGH_WATER_SHARE * r.need && r.keyOk;
   return waterOk && r.heatOk && r.sowOk;
 }
 
@@ -436,12 +471,18 @@ export function pickStrategies(ranked, currentName, focusCrop, currentLabel = TY
     picked.push({ ...r, label: picked.some(p => p.label === label) ? 'Another option' : label });
   };
   add(ranked.find(r => r.rotation === currentName), currentLabel);
+  const cur0 = ranked.find(r => r.rotation === currentName);
+  const better = cur0 ? pool.filter(r => verdict(r, cur0).key === 'better') : [];
+  add(better[0], TYPE_LABEL.best);
+  add(better[1], TYPE_LABEL[better[1]?.type]);
   const saver = pool.find(r => r.type === 'moisture' || r.type === 'drought');
   add(saver, TYPE_LABEL[saver?.type]);
   add(pool.find(r => r.type === 'nitrogen'), TYPE_LABEL.nitrogen);
   const cur = ranked.find(r => r.rotation === currentName);
   add(pool[0], pool[0] && (!cur || verdict(pool[0], cur).key === 'better') ? TYPE_LABEL.best : TYPE_LABEL[pool[0]?.type]);
-  for (const r of pool) { if (picked.length >= 4) break; add(r, TYPE_LABEL[r.type]); }
+  // drop options we'd call worse: don't suggest something we advise against
+  if (cur0) for (let i = picked.length - 1; i > 0; i--) if (verdict(picked[i], cur0).key === 'worse') picked.splice(i, 1);
+  for (const r of pool) { if (picked.length >= 4) break; if (!cur0 || verdict(r, cur0).key !== 'worse') add(r, TYPE_LABEL[r.type]); }
   for (const r of ranked.filter(x => x.recommend)) { if (picked.length >= 3) break; add(r, TYPE_LABEL[r.type]); }
   return picked;
 }
@@ -456,7 +497,9 @@ export function verdict(s, current) {
   const dominated = dNormal <= -50 && dBad <= 0 && dRisk <= 0;
   const tradeOff = dNormal <= -30 && dRisk < 0; // earns less AND fails more often: never call that better
   if ((d >= 3 && !tradeOff) || (dominates && d > -3)) return { key: 'better', text: 'Better for you' };
-  if (d <= -3 || dominated) return { key: 'worse', text: 'Worse for you' };
+  if ((d <= -3 && !dominates) || dominated) return { key: 'worse', text: 'Worse for you' };
+  if (dNormal <= -100 && dRisk > 0) return { key: 'similar', text: 'Safer, earns less' };
+  if (dNormal >= 100 && dRisk < 0) return { key: 'similar', text: 'Earns more, riskier' };
   return { key: 'similar', text: 'About the same' };
 }
 

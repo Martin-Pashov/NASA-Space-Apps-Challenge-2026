@@ -4,7 +4,7 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as src from './lib/sources.js';
-import { areaHa, centroid, geometryKey } from './public/geo.js';
+import { areaHa, centroid, geometryKey, pickParcel } from './public/geo.js';
 
 loadEnv();
 const app = express();
@@ -47,15 +47,10 @@ app.get('/api/reverse', async (req, res) => {
 app.get('/api/parcel', async (req, res) => {
   const lat = +req.query.lat, lon = +req.query.lon;
   try {
-    const shapes = (await src.getParcel(lat, lon))
-      .map(s => ({ ...s, areaHa: areaHa(s.geometry) }))
-      .sort((a, b) => a.areaHa - b.areaHa);
-    const best = shapes[0];
-    if (!best) return res.json({ found: false, reason: 'No field outline on OpenStreetMap here.' });
-    if (best.areaHa > 150) return res.json({ found: false, reason: `The OpenStreetMap outline here covers ${Math.round(best.areaHa)} ha (many fields at once).` });
-    res.json({ found: true, ...best });
+    res.json(pickParcel(await src.getParcel(lat, lon)));
   } catch (err) {
-    res.json({ found: false, reason: `Field outline service unavailable (${err.message}).` });
+    console.warn('Field outline lookup failed ->', err.message);
+    res.json({ found: false, unavailable: true, reason: 'We couldn\'t load field outlines from OpenStreetMap right now (the free service is busy).' });
   }
 });
 

@@ -68,7 +68,8 @@ The browser never calls the data APIs directly, so the Copernicus secret stays o
 
 ## Method
 
-- **Stress test:** every crop is checked against every past season: enough rain at sowing for autumn crops (e.g. rapeseed needs ≥ 40 mm in Aug–Sep), enough water while growing (season rain + soil water ≥ 75% of crop need) and no heat stress in its sensitive months.
+- **Stress test:** every crop is checked against every past season: enough rain at sowing for autumn crops (e.g. rapeseed needs ≥ 40 mm in Aug–Sep), enough water while growing (season rain + soil water ≥ 75% of crop need), no dry winter and spring (rain from October to the end of the crop's sensitive months ≥ 80% of this field's own median) and no heat stress in its sensitive months.
+- **Validation:** back-tested against the Ministry of Agriculture report on 2019/2020 (Dobrich wheat 178 kg/dka, −68%; barley −40%; rapeseed −30%). NASA POWER monthly rain matched the General Toshevo station within a few mm in most months. The first version of the model counted 2020 as a good year (it assumed the soil was always full after winter and counted June rain at harvest); the winter/spring check fixes that. Use "Check past years: year by year" in the app to compare any year yourself.
 - **2035 outlook:** past weather shifted along the measured temperature and rain trend. A projection, not a forecast.
 - **Verdicts:** options are shown as *Better / About the same / Worse for you*. Better means clearly better on what you picked, or more money in bad years without being worse otherwise. Never better if it earns less and fails more often.
 - **Scores (0–100, internal):** moisture (rain vs crop needs), erosion (months of bare soil between crops), income (typical profit using each year's real outcome), soil health (legumes, cover crops, diversity), reliability (share of seasons that passed). Weighted by the farmer's priorities.
