@@ -4,6 +4,10 @@ NASA Space Apps Challenge 2026 · Challenge: **Field Shift: Adapting Farms with 
 
 **Try it live: https://fieldshift-o2cu.onrender.com** (free hosting: the first visit after a quiet spell takes about a minute to wake up)
 
+**Full walkthrough video (49 s):** https://www.youtube.com/watch?v=5BIDRKyOs-c
+
+[![FieldShift walkthrough video](https://img.youtube.com/vi/5BIDRKyOs-c/hqdefault.jpg)](https://www.youtube.com/watch?v=5BIDRKyOs-c)
+
 **Who we are:** a Bulgarian team at NASA Space Apps 2026 (Sofia).
 **The problem:** NASA and ESA collect huge amounts of free data about every field, but almost none of it reaches the farmer in a usable form.
 **What we do:** FieldShift turns that data into plain, explained decisions about the farmer's own field: what to sow, what it earns in normal and bad years, and what to watch out for (hail, frost, drought, pests), with alerts by SMS and automated call.
