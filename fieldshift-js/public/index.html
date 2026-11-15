@@ -32,19 +32,6 @@
       </ul>
     </section>
 
-    <section class="about card" id="about">
-      <div class="about-head">
-        <p class="eyebrow">Who we are</p>
-        <h2>Space data that actually reaches the farmer</h2>
-        <p class="muted">FieldShift is built by a Bulgarian team at the NASA Space Apps Challenge 2026 (Sofia).</p>
-      </div>
-      <div class="about-grid">
-        <div><h3>😟 The problem</h3><p>NASA and ESA collect enormous amounts of free data about every field on Earth: rain, heat, soil moisture, crop growth. Almost none of it reaches the farmer in a form he can use. Decisions are made from memory, while droughts get more frequent.</p></div>
-        <div><h3>🛰️ What we do</h3><p>We read 25 years of NASA climate data, 5 years of Sentinel-2 satellite images of <i>your</i> field, the soil and the slope, plus the weather forecast, and turn them into plain answers: what to sow, what it earns in a normal and a bad year, and what to watch out for.</p></div>
-        <div><h3>✅ How it helps</h3><p>You make an informed decision about your own fields: compare your rotation with 2 better options, get warned about hail, frost, drought and pests in time, and see the evidence behind every number. Free, no account.</p></div>
-      </div>
-    </section>
-
     <!-- STEP 1 -->
     <section class="card step">
       <div class="step-head"><span class="num">1</span><div><h2>Where is your field?</h2><p class="muted">Search for your village, then draw your field with the ⬠ tool on the left of the map, or click on it to start from a square you can resize.</p></div></div>
@@ -124,8 +111,20 @@
       <button id="analyze" class="btn primary" disabled>Analyse my field</button>
       <p id="goHint" class="muted">Select a field on the map first.</p>
       <p class="muted small">Free, no account. Your field's location is only used to fetch public satellite and climate data. Usually takes 5–60 seconds (faster for fields checked before).</p>
-      <p class="agronomist-note">🧑‍🌾 FieldShift helps you decide. It does <b>not</b> replace your local agronomist.</p>
     </div>
+
+    <section class="about card" id="about">
+      <div class="about-head">
+        <p class="eyebrow">Who we are</p>
+        <h2>Space data that actually reaches the farmer</h2>
+        <p class="muted">FieldShift is built by a Bulgarian team at the NASA Space Apps Challenge 2026 (Sofia).</p>
+      </div>
+      <div class="about-grid">
+        <div><h3>😟 The problem</h3><p>NASA and ESA collect enormous amounts of free data about every field on Earth: rain, heat, soil moisture, crop growth. Almost none of it reaches the farmer in a form he can use. Decisions are made from memory, while droughts get more frequent.</p></div>
+        <div><h3>🛰️ What we do</h3><p>We read 25 years of NASA climate data, 5 years of Sentinel-2 satellite images of <i>your</i> field, the soil and the slope, plus the weather forecast, and turn them into plain answers: what to sow, what it earns in a normal and a bad year, and what to watch out for.</p></div>
+        <div><h3>✅ How it helps</h3><p>You make an informed decision about your own fields: compare your rotation with 2 better options, get warned about hail, frost, drought and pests in time, and see the evidence behind every number. Free, no account.</p></div>
+      </div>
+    </section>
   </div>
 
   <!-- ================= PROGRESS ================= -->
@@ -151,7 +150,7 @@
     </header>
     <div class="resultbar">
       <div class="resultbar-row">
-        <div class="place"><button id="back" class="btn ghost">← Change field</button><div><b id="placeName"></b><p class="muted" id="coords"></p></div></div>
+        <div class="place"><button id="back" class="btn ghost">← Change field</button><div><b id="placeName"></b><p class="muted" id="coords"></p></div><a href="#checksSec" id="checksBadge" class="checks-badge" hidden></a></div>
         <div class="bar-right">
           <div class="view-switch" role="group" aria-label="How much detail">
             <button class="view-btn" data-view="simple">👀 Simple</button><button class="view-btn" data-view="detailed">🔬 Detailed</button>
@@ -160,19 +159,15 @@
         </div>
       </div>
       <nav class="section-nav" id="sectionNav">
-        <a href="#answer">Suggestion</a><a href="#alertsSec">Alerts</a><a href="#optionsSec">3 strategies</a><a href="#predictSec">Season risk</a><a href="#pestsSec">Pests &amp; fertilizer</a><a href="#insightsSec" class="detail-only">Your field</a><a href="#cropsSec" class="detail-only">Crops</a><a href="#chartsSec" class="detail-only">Charts</a><a href="#guideSec">How to read this</a><a href="#methodSec" class="detail-only">Method</a>
+        <a href="#answer">Suggestion</a><a href="#alertsSec">Alerts</a><a href="#optionsSec">3 strategies</a><a href="#predictSec" class="detail-only">Season risk</a><a href="#pestsSec">This season</a><a href="#monitorSec" class="simple-only">Phone alerts</a><a href="#insightsSec" class="detail-only">Your field</a><a href="#cropsSec" class="detail-only">Crops</a><a href="#chartsSec" class="detail-only">Charts</a><a href="#guideSec" class="detail-only">How to read this</a><a href="#methodSec" class="detail-only">Method</a>
       </nav>
     </div>
     <p class="history-line" id="historyLabel"></p>
 
-    <div class="agronomist" role="note"><span>🧑‍🌾</span><p><b>FieldShift helps you decide, it does not replace your local agronomist.</b> Numbers come from satellites, regional weather and regional prices. Before you change crops, spray or fertilise, check with an agronomist, your buyers and the product label.</p></div>
+    <div class="agronomist" role="note"><span>🧑‍🌾</span><p><b>FieldShift helps you decide. It does not replace your local agronomist.</b></p></div>
 
-    <p class="view-hint simple-only">You're seeing the <b>simple view</b>: only the most important things. Switch to <button class="link-btn inline" data-view="detailed">🔬 Detailed</button> for all data, charts and the science behind every number.</p>
-    <p class="view-hint detail-only">You're seeing the <b>detailed view</b> with all data and scientific reasons. <button class="link-btn inline" data-view="simple">👀 Back to simple</button></p>
 
     <section id="answer" class="card answer"></section>
-
-    <section id="glance" class="glance simple-only"></section>
 
     <section id="alertsSec" class="card"></section>
 
@@ -206,20 +201,20 @@
         <div class="table-wrap"><table id="compare" class="compare"></table></div>
         <p class="muted">Profit = harvest value minus typical growing costs, before land rent and subsidies. Normal year = the middle of the last 24 seasons; bad year = about the 3rd-worst (1 year in 10). A negative bad year means you'd lose money that year, like many farms in Dobrich in 2020.</p>
       </div>
-      <details class="adjust-wrap" id="ownWrap"><summary>Use your own yields and prices</summary>
+      <details class="adjust-wrap detail-only" id="ownWrap"><summary>Use your own yields and prices</summary>
         <p class="muted">Change the numbers to match your farm. All profits update right away.</p>
         <div id="ownNumbers" class="own"></div>
       </details>
-      <details class="adjust-wrap"><summary>Fine-tune what matters to you</summary><div id="adjust" class="adjust"></div></details>
+      <details class="adjust-wrap detail-only"><summary>Fine-tune what matters to you</summary><div id="adjust" class="adjust"></div></details>
     </section>
 
-    <section id="predictSec" class="card"></section>
+    <section id="predictSec" class="card detail-only"></section>
 
     <section id="pestsSec" class="card"></section>
 
     <section id="monitorSec" class="card">
       <h2>📱 Get alerts on your phone</h2>
-      <p class="muted">We check your field every 6 hours: weather forecast, satellite images and pest risk. You get an <b>automated call + SMS</b> for urgent alerts and an SMS for warnings.</p>
+      <p class="muted">We check your field every 6 hours and send an SMS (and a call if it's urgent).</p>
       <form id="monitorForm" class="monitor-form" autocomplete="on">
         <label>Mobile number<input id="monPhone" type="tel" inputmode="tel" placeholder="0888 123 456" autocomplete="tel" required></label>
         <label>Send me<select id="monLevel">
@@ -231,7 +226,7 @@
       </form>
       <p id="monStatus" class="muted" role="status"></p>
       <div id="monResult"></div>
-      <details class="adjust-wrap"><summary>No signal in the field? How alerts still reach you</summary>
+      <details class="adjust-wrap detail-only"><summary>No signal in the field? How alerts still reach you</summary>
         <ul>
           <li><b>SMS waits for you.</b> An SMS is stored by the mobile network and delivered the moment your phone catches even a weak 2G signal, which is enough for SMS but not for internet. No app or mobile data needed.</li>
           <li><b>Urgent alerts come early.</b> Hail, frost and storm alerts are sent as soon as the forecast shows them (often 1–3 days ahead), usually while you're still in the village, not in the field.</li>
@@ -265,9 +260,11 @@
       </div>
     </section>
 
-    <section id="checksSec" class="card"></section>
+    <div class="simple-only more-detail"><button class="btn" data-view="detailed">🔬 Show the detailed analysis</button><p class="muted">All data, charts, the season-risk model and the science behind every number.</p></div>
 
-    <section id="guideSec" class="card"></section>
+    <section id="checksSec" class="card detail-only"></section>
+
+    <section id="guideSec" class="card detail-only"></section>
 
     <details class="card detail-only">
       <summary>What this tool doesn't know</summary>
@@ -289,7 +286,7 @@
       <p><b>Alerts:</b> the 7-day forecast (ECMWF and DWD ICON models) is checked for hail (thunderstorm with hail codes), heavy rain and floods, frost, heat, drought and storms; the latest Sentinel-2 image is compared with the same weeks in earlier years to spot a sudden drop in greenness (pests, disease, nutrient shortage or drought); and a pest model checks each crop's main pests against the forecast temperature and rain. Levels: URGENT (call + SMS), WARNING (SMS), RECOMMENDATION and INFO (in the app).</p>
       <p><b>Validation:</b> every data source is checked for missing or impossible values before it's used or saved in the cache, crop names are spell-checked and looked up in the GBIF plant database, and the results are checked for consistency (shown in "Data and result checks").</p>
     </details>
-    <p class="disclaimer">Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. FieldShift helps you explore options. Always check new crops with a local agronomist, your buyers and your machinery.</p>
+    <p class="disclaimer">Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. </p>
   </div>
 
   <script type="module" src="app.js"></script>

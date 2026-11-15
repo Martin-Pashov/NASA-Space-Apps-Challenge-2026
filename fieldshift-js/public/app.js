@@ -467,7 +467,6 @@ function renderDecision() {
   renderAlerts();
   renderPrediction();
   renderPests();
-  renderGlance();
   renderMonitorPreview();
   if (state.checks) renderChecks();
 }
@@ -580,6 +579,14 @@ function renderOwnNumbers(names) {
 
 const VERDICT_ORDER = { better: 0, now: 1, similar: 2, worse: 3 };
 
+// The season-risk model in one sentence, using the chance of a good season (one number, not two)
+const chanceWord = p => (p >= 0.75 ? 'good' : p >= 0.55 ? 'fair' : 'poor');
+function seasonLine() {
+  const c = state.ctx, pred = c.pred, m = pred?.ok ? pred.byCrop[c.nextCrop] : null;
+  if (!m) return '';
+  return `<p class="season-line">📈 Chance of a good ${pred.harvestYear} season for ${esc(c.nextCrop)}: <b>${r0(m.p * 100)}% (${chanceWord(m.p)})</b>, usually ${r0(m.base * 100)}%. This autumn looks most like ${m.analogs[0].year}.</p>`;
+}
+
 // The evidence for one strategy, each line with the dataset it comes from
 function strategyData(p, current, e) {
   const c = state.ctx, n = c.cy.years.length;
@@ -637,10 +644,11 @@ function renderStrategies() {
   $('answer').innerHTML = `<div class="eyebrow">${eyebrow}</div>
     <h2>${esc(ans.title)}</h2><p class="when">🗓️ ${esc(ans.when)}</p>
     <div class="facts">
-      <div class="fact"><span>Good seasons</span><b>${r0(sug.risk)}%</b></div>
-      <div class="fact"><span>Normal year</span><b>${money(sug.profitNormal)}</b></div>
-      <div class="fact"><span>Bad year (1 in 10)</span><b>${money(sug.profitBad)}</b></div>
+      <div class="fact" title="Out of the last 24 years, the share with enough rain and no damaging heat for these crops on your field"><span>Good seasons ⓘ</span><b>${r0(sug.risk)}%</b></div>
+      <div class="fact" title="Profit after typical growing costs, before rent and subsidies, in a typical year"><span>Normal year ⓘ</span><b>${money(sug.profitNormal)}</b></div>
+      <div class="fact" title="Profit in about 1 year out of 10 (a drought or heat year). A minus means a loss."><span>Bad year (1 in 10) ⓘ</span><b>${money(sug.profitBad)}</b></div>
     </div>
+    ${seasonLine()}
     ${list(ans.reasons.map(esc))}
     ${ans.how ? `<div class="how">🌱 ${esc(ans.how)}</div>` : ''}
     ${ans.tradeOff ? `<div class="risk">💶 ${esc(ans.tradeOff)}</div>` : ''}
@@ -701,18 +709,14 @@ function renderStrategies() {
     const data = strategyData(p, current, e);
     const gaps = strategyGaps(p, e);
     const benefits = isCur ? [c.beginner ? 'The most common rotation in Bulgaria: machinery, seed and buyers are easy to find.' : 'No switching costs: you know these crops, have the machinery and the buyers.'] : e.benefits;
-    const topRisk = e.risks[0] ?? gaps[0];
-    return `<article class="strategy ${isCur ? 'current' : ''}">
-      <div class="head"><span class="kind">Strategy ${letters[i]} · ${esc(isCur ? (c.beginner ? 'Typical rotation (baseline)' : 'Your rotation now (baseline)') : p.label)}</span>${v.key === 'now' ? '' : `<span class="chip ${v.key}">${v.text}</span>`}</div>
+    const isPick = p.rotation === c.suggestion.rotation;
+    return `<article class="strategy ${isCur ? 'current' : ''} ${isPick ? 'pick' : ''}">
+      <div class="head"><span class="kind">Strategy ${letters[i]} · ${esc(isCur ? (c.beginner ? 'Typical rotation (baseline)' : 'Your rotation now (baseline)') : p.label)}</span>${isPick ? '<span class="chip better simple-only">⭐ Our pick</span>' : ''}${v.key === 'now' ? '' : `<span class="chip ${v.key} detail-only">${v.text}</span>`}</div>
       <h3>${esc(p.rotation.replace(/^Your rotation: /, ''))}</h3>
       <div class="facts"><div class="fact"><span>Good seasons</span><b>${r0(p.risk)}%</b></div>
         <div class="fact"><span>Normal year</span><b>${money(p.profitNormal)}</b></div>
         <div class="fact"><span>Bad year</span><b>${money(p.profitBad)}</b></div></div>
-      <div class="simple-only strat-simple">
-        <p>${e.why}</p>
-        ${!isCur && benefits[0] ? `<p class="plus">➕ ${benefits[0]}</p>` : ''}
-        ${topRisk ? `<p class="minus">➖ ${topRisk}</p>` : ''}
-      </div>
+      <p class="simple-only strat-simple">${e.why}</p>
       <div class="detail-only strat-sections">
         <section><h4>🎯 Why we suggest it</h4><p>${e.why}</p></section>
         <section><h4>🛰️ NASA &amp; ESA data behind it</h4>${list(data)}</section>
@@ -761,19 +765,12 @@ function renderAlerts() {
       <span class="badge">${L[a.level].label}<small>${L[a.level].labelBg}</small></span>
       <div><h3>${ALERT_ICON[a.type] ?? '⚠️'} ${esc(a.title)}</h3><p>${esc(a.text)}</p>${a.action ? `<p class="action">👉 ${esc(a.action)}</p>` : ''}
       <span class="src">${esc(a.when ?? '')} · ${esc(a.source ?? '')} · sent by ${(a.channels ?? L[a.level].channels).map(x => CHANNEL[x]).join(', ')}</span></div></div>`;
+  $('alertsSec').classList.toggle('detail-only', !major.length);
   $('alertsSec').innerHTML = `<h2>🚨 Alerts for your field</h2>
     <p class="muted">Next ${SURE_DAYS} days of weather, the latest satellite image of your field and pest risk for ${c.fieldCrops.map(esc).join(', ')}.</p>
     ${c.forecast ? '' : `<p class="insight warn">The weather forecast could not be loaded, so hail, frost, rain and pest-weather alerts are missing. <small>(${esc(forecastProblem())})</small></p>`}
     ${major.length ? '' : '<p class="insight good">✅ No urgent alerts or warnings right now.</p>'}
     <div class="alerts">${al.map(item).join('')}</div>
-    ${minor ? `<p class="muted simple-only">+ ${minor} recommendation${minor > 1 ? 's' : ''} and info in the <button class="link-btn inline" data-view="detailed">detailed view</button>.</p>` : ''}
-    <details class="adjust-wrap detail-only"><summary>What the 4 alert levels mean</summary>
-      <table class="levels"><tr><th>Level</th><th>When</th><th>How you're told</th></tr>
-      <tr><td><span class="badge-s lvl-urgent">${L.urgent.label} · ${L.urgent.labelBg}</span></td><td>Act within hours: hail, flooding, hard frost, severe heat or a sudden crop collapse seen from space</td><td>${L.urgent.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
-      <tr><td><span class="badge-s lvl-warning">${L.warning.label} · ${L.warning.labelBg}</span></td><td>Plan in the next days: drought, strong wind, pest outbreak weather, crop stress</td><td>${L.warning.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
-      <tr><td><span class="badge-s lvl-advice">${L.advice.label} · ${L.advice.labelBg}</span></td><td>Good to do: scout for a pest, adjust fertiliser, sowing advice</td><td>${L.advice.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
-      <tr><td><span class="badge-s lvl-info">${L.info.label} · ${L.info.labelBg}</span></td><td>For your information: thunderstorms, seasonal notes</td><td>${L.info.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr></table>
-    </details>
     ${c.forecast ? `<details class="adjust-wrap detail-only"><summary>Weather forecast, next ${SHOW_DAYS} days</summary><div class="chart"><canvas id="forecastChart"></canvas></div><p class="muted">${esc(c.forecast.source ?? 'Open-Meteo')}, for your field's exact location. ECMWF and DWD ICON are the two most accurate weather models for Europe; hail and wind take the worse of the two.</p></details>` : ''}`;
   if (c.forecast && window.Chart) {
     const days = c.forecast.days.slice(0, SHOW_DAYS);
@@ -797,7 +794,6 @@ function renderPrediction() {
   }
   const crop = c.nextCrop;
   const weatherAlerts = (c.alerts ?? []).filter(a => !['pest', 'disease'].includes(a.type));
-  const rs = ML.riskScore(pred, crop, weatherAlerts);
   const m = pred.byCrop[crop];
   const word = { low: 'Low', medium: 'Medium', high: 'High' };
   const similar = m.analogs.slice(0, 3).map(a => a.year);
@@ -806,11 +802,10 @@ function renderPrediction() {
   const rows = [...new Set([...c.fieldCrops, ...c.suggestion.mains, ...pred.perCrop.slice(0, 5).map(x => x.crop)])].map(x => pred.byCrop[x]).filter(Boolean);
   box.innerHTML = `<h2>📈 Season risk for ${pred.harvestYear}</h2>
     <p class="muted">A machine-learning model compares this season so far with the last ${pred.nYears} seasons on your field${pred.usedForecast ? ' (including the next 7 days of forecast)' : ''}.</p>
-    <div class="risk-gauge lvl-${rs.level}">
-      <div class="score"><b>${rs.score}</b><span>/100</span></div>
-      <div><p class="big">${word[rs.level]} risk for <b>${esc(crop)}</b> (harvest ${pred.harvestYear})</p>
-        <div class="bar"><i style="width:${rs.score}%"></i></div>
-        <p>Chance of a good season: <b>${r0(m.p * 100)}%</b> (in an average year: ${r0(m.base * 100)}%). This season so far looks most like <b>${similar.join(', ')}</b>; ${goodOf} of the ${m.analogs.length} most similar seasons ended well for ${esc(crop)}.${weatherAlerts.some(a => a.level === 'urgent' || a.level === 'warning') ? ' Active weather alerts raise the risk.' : ''}</p></div>
+    <div class="risk-gauge lvl-${m.p >= 0.75 ? 'low' : m.p >= 0.55 ? 'medium' : 'high'}">
+      <div class="score"><b>${r0(m.p * 100)}</b><span>%</span></div>
+      <div><p class="big">Chance of a good season for <b>${esc(crop)}</b> (harvest ${pred.harvestYear}): <b>${chanceWord(m.p)}</b></p>
+        <p>In an average year it's ${r0(m.base * 100)}%. This season so far looks most like <b>${similar.join(', ')}</b>; ${goodOf} of the ${m.analogs.length} most similar seasons ended well for ${esc(crop)}.</p></div>
     </div>
     <div class="detail-only">
       <h3 class="sub">What the model sees this season</h3>${list(pred.features.map(esc))}
@@ -854,18 +849,20 @@ function renderPests() {
   if (!c.soil.isDefault && c.soil.ph > 7.8) soilNotes.push(`Alkaline soil (pH ${c.soil.ph.toFixed(1)}): watch for zinc and iron shortage, especially in corn.`);
   if (c.soil.texture === 'Sandy') soilNotes.push('Sandy soil: nitrogen washes out after heavy rain; split it into 2–3 smaller doses.');
   const nutrientAlert = (c.alerts ?? []).find(a => a.type === 'nutrient');
-  box.innerHTML = `<h2>🐛 Pests, diseases and fertilizer</h2>
-    <p class="muted">What to watch for ${crops.map(esc).join(', ')} in the coming months, and what to do. Always use products registered by БАБХ and follow the label.</p>
+  box.innerHTML = `<h2>🐛 Watch this season</h2>
+    <p class="muted detail-only">What to watch for ${crops.map(esc).join(', ')} in the coming months, and what to do. Always use products registered by БАБХ and follow the label.</p>
     ${pestAlerts.length ? `<p class="insight warn">The forecast weather favours ${pestAlerts.map(a => esc(a.title)).join('; ')}. See the alerts above.</p>` : ''}
-    <div class="pest-cards">${watch.length ? watch.map(p => `<div class="pest sev-${p.severity}">
+    <ul class="watch simple-only">${watch.slice(0, 3).map(p => `<li><b>${typeIcon[p.type] ?? '🐛'} ${nameOf(p)}</b> · ${esc(p.crop)}, ${months(p.months)}<br><span>${esc(p.action.split(/(?<=\.)\s/)[0])}</span></li>`).join('')}
+      ${fert ? `<li><b>🧪 Fertilizer for ${esc(c.nextCrop)}</b><br><span>About ${Math.max(0, fert.N - nCredit)} kg nitrogen, ${fert.P2O5} kg P₂O₅ and ${fert.K2O} kg K₂O per ha for a normal yield. Split the nitrogen.</span></li>` : ''}</ul>
+    <div class="pest-cards detail-only">${watch.length ? watch.map(p => `<div class="pest sev-${p.severity}">
       <h3>${typeIcon[p.type] ?? '🐛'} ${nameOf(p)}</h3><p class="muted">${esc(p.crop)} · ${months(p.months)}${p.severity === 3 ? ' · can destroy the crop' : ''}</p>
       <p><b>You'll see:</b> ${esc(p.signs)}</p><p><b>Do:</b> ${esc(p.action)}</p>
       <p class="detail-only"><b>Check:</b> ${esc(p.scout)}</p>${p.satellite ? `<p class="detail-only muted">🛰️ ${esc(p.satellite)}</p>` : ''}</div>`).join('') : '<p>Nothing major to watch in the coming months.</p>'}</div>
-    ${fert ? `<h3 class="sub">🧪 Fertilizer for ${esc(c.nextCrop)}</h3>
+    ${fert ? `<div class="detail-only"><h3 class="sub">🧪 Fertilizer for ${esc(c.nextCrop)}</h3>
       <div class="facts nutrients"><div class="fact"><span>Nitrogen N</span><b>${Math.max(0, fert.N - nCredit)} kg/ha</b></div><div class="fact"><span>Phosphorus P₂O₅</span><b>${fert.P2O5} kg/ha</b></div><div class="fact"><span>Potassium K₂O</span><b>${fert.K2O} kg/ha</b></div></div>
       <p class="muted">Typical need for a normal yield${nCredit ? `, minus ~${nCredit} kg N/ha left by ${esc(c.lastCrop)}` : ''}. ${esc(fert.note ?? '')} A soil test every 4–5 years tells you the real numbers.</p>
       ${soilNotes.length ? list(soilNotes.map(esc)) : ''}
-      ${nutrientAlert ? `<p class="insight warn">🛰️ ${esc(nutrientAlert.text)}</p>` : ''}` : ''}
+      ${nutrientAlert ? `<p class="insight warn">🛰️ ${esc(nutrientAlert.text)}</p>` : ''}</div>` : ''}
     <details class="adjust-wrap detail-only"><summary>All pests and diseases for your crops</summary>
       ${crops.map(cr => `<h4>${esc(cr)}</h4><div class="table-wrap"><table class="pest-table"><tr><th>Pest / disease</th><th>When</th><th>Signs</th><th>Check (threshold)</th><th>What to do</th></tr>
         ${db.crops[cr].pests.map(p => `<tr><td>${typeIcon[p.type] ?? ''} ${nameOf(p)}<br><small><i>${esc(p.latin ?? '')}</i></small></td><td>${months(p.months)}</td><td>${esc(p.signs)}</td><td>${esc(p.scout)}</td><td>${esc(p.action)}</td></tr>`).join('')}</table></div>`).join('')}
@@ -908,6 +905,8 @@ function renderChecks() {
   state.checks = res;
   const groups = [...new Set(res.checks.map(x => x.group))];
   const icon = ok => (ok ? '✅' : ok === false ? '❌' : '➖');
+  $('checksBadge').hidden = false;
+  $('checksBadge').textContent = `${res.failed ? '⚠️' : '✅'} ${res.passed}/${res.total} data checks passed`;
   $('checksSec').innerHTML = `<h2>${res.failed ? '⚠️' : '✅'} Data and result checks: ${res.passed} of ${res.total} passed</h2>
     <p class="muted">Every data source is checked for missing or impossible values, and the results for consistency, before you see them.${res.failed ? ' Something failed: treat the numbers with extra care.' : ''}</p>
     <div class="detail-only checks">${groups.map(g => `<h3 class="sub">${g}</h3><ul>${res.checks.filter(x => x.group === g).map(x => `<li>${icon(x.ok)} ${esc(x.text)}</li>`).join('')}</ul>`).join('')}</div>`;
@@ -976,7 +975,7 @@ function renderMonitorPreview() {
   const c = state.ctx, name = state.placeName || 'your field';
   const min = AL.LEVELS[$('monLevel').value]?.rank ?? 1;
   const send = (c.alerts ?? []).filter(a => AL.LEVELS[a.level].rank <= min);
-  $('monResult').innerHTML = `${send.length ? `<p class="small-label">With today's alerts you would get:</p>${send.map(a => `<div class="sms"><span>${AL.channelsFor(a.level).filter(x => x !== 'app').map(x => CHANNEL[x]).join(' + ')}</span><p>${esc(AL.smsText(a, name))}</p></div>`).join('')}` : '<p class="muted">Nothing would be sent today: no alerts at your level.</p>'}
+  $('monResult').innerHTML = `<div class="detail-only">${send.length ? `<p class="small-label">With today's alerts you would get:</p>${send.map(a => `<div class="sms"><span>${AL.channelsFor(a.level).filter(x => x !== 'app').map(x => CHANNEL[x]).join(' + ')}</span><p>${esc(AL.smsText(a, name))}</p></div>`).join('')}` : '<p class="muted">Nothing would be sent today: no alerts at your level.</p>'}</div>
     ${state.monitorId ? '<button class="btn" id="monCheck">Run a check now</button><div id="monLog"></div>' : ''}`;
   $('monCheck')?.addEventListener('click', async () => {
     $('monLog').textContent = 'Checking forecast, satellite and pests…';
