@@ -9,13 +9,15 @@ const FAIL_YIELD_SHARE = 0.5;    // failed season = half the normal yield
 const ENOUGH_WATER_SHARE = 0.75; // rain + soil water must cover 75% of crop need
 const COVER_WATER_USE_MM = 30;   // spring moisture a cover crop takes from the next crop
 const SAME_CROP_PENALTY = 0.15;
-const SWITCH_FACTOR = { easy: 1, medium: 0.95, hard: 0.82 }; // hard-to-adopt crops count less unless already grown  // a crop after itself yields ~15% less and fails more often (diseases, pests)
+// a crop after itself yields ~15% less and fails more often (diseases, pests)
+const SWITCH_FACTOR = { easy: 1, medium: 0.95, hard: 0.82 }; // hard-to-adopt crops count less unless already grown
 export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const r0 = x => Math.round(x);
-export const eur = x => (x < 0 ? '-€' : '€') + Math.abs(Math.round(x));
+export const eur = x => (Math.round(x) < 0 ? '-€' : '€') + Math.abs(Math.round(x));
+export const isAutumnSown = c => c.seasonStart > c.seasonEnd; // sown in autumn, harvested next summer
 const slope = (xs, ys) => {
   const mx = mean(xs), my = mean(ys);
   let n = 0, d = 0;
@@ -131,6 +133,29 @@ export function fieldSummary(rows) {
     moistureChange = { points, pct: Math.abs(baseMean) > 0.05 ? points / Math.abs(baseMean) * 100 : null };
   }
 
+  // moisture in the last ~3 months vs the same months in earlier years (same period as the rain card)
+  let moistureRecent = null;
+  const threeMonths = rows.filter(r => new Date(r.date) >= now - 92 * 864e5 && typeof r.ndmi === 'number');
+  if (threeMonths.length >= 2 && earlier.length >= 12) {
+    const base = m => mean(earlier.filter(r => month(r) === m && typeof r.ndmi === 'number').map(r => r.ndmi));
+    moistureRecent = mean(threeMonths.map(r => r.ndmi - base(month(r))));
+  }
+
+  // what grew each year: autumn-sown crops are already green in March–April, spring crops are still bare
+  const seasons = [];
+  for (const y of [...new Set(rows.map(r => +r.date.slice(0, 4)))].sort()) {
+    const inYear = rows.filter(r => +r.date.slice(0, 4) === y);
+    const spring = inYear.filter(r => [3, 4].includes(month(r))).map(r => r.ndvi);
+    const later = inYear.filter(r => month(r) >= 5 && month(r) <= 8).map(r => r.ndvi);
+    if (!spring.length || !later.length) continue;
+    const springGreen = Math.max(...spring), peak = Math.max(...later);
+    let type = 'unclear';
+    if (springGreen >= 0.45) type = 'autumn';
+    else if (springGreen < 0.38 && peak >= 0.5) type = 'spring';
+    else if (Math.max(springGreen, peak) < 0.35) type = 'bare';
+    seasons.push({ year: y, type, springGreen, peak });
+  }
+
   // peak greenness per year
   const peaks = {};
   for (const r of rows) { const y = r.date.slice(0, 4); peaks[y] = Math.max(peaks[y] ?? -1, r.ndvi); }
@@ -139,7 +164,7 @@ export function fieldSummary(rows) {
   const thisPeak = peakVals.at(-1), prevPeak = mean(peakVals.slice(0, -1));
 
   return {
-    bareDays, bareMonths, typicalBare, moistureChange, years, peakVals,
+    bareDays, bareMonths, typicalBare, moistureChange, moistureRecent, seasons, years, peakVals,
     peakNdvi: mean(peakVals), peakChange: peakVals.length > 1 ? thisPeak - prevPeak : 0,
     ndviTrend: peakVals.length > 1 ? slope(years.map(Number), peakVals) * years.length : 0,
     observations: rows.length,
@@ -148,51 +173,73 @@ export function fieldSummary(rows) {
 
 // =============== 3. INSIGHTS (what the farmer can't see) ===============
 
+// This year's autumn: did autumn-sown crops get enough rain at sowing time?
+export function autumnCheck(recent, crops) {
+  if (!recent) return [];
+  const byKey = Object.fromEntries(recent.months.map(m => [m.key, m]));
+  const out = [];
+  for (const c of crops.filter(c => c.sowRainMm && c.sowRainMonths)) {
+    // only this autumn: the latest year in the data, and only if all sowing months are complete
+    const y = Math.max(...recent.months.map(m => +m.key.slice(0, 4)));
+    if (!c.sowRainMonths.every(m => byKey[`${y}-${String(m).padStart(2, '0')}`])) continue;
+    const ms = c.sowRainMonths.map(m => byKey[`${y}-${String(m).padStart(2, '0')}`]);
+    const rain = ms.reduce((a, m) => a + m.rain, 0), normal = ms.reduce((a, m) => a + m.normal, 0);
+    out.push({ crop: c.crop, year: y, months: c.sowRainMonths.map(m => MONTHS[m - 1]).join('–'), rain, normal,
+      pct: normal ? (rain / normal - 1) * 100 : 0, dry: rain < c.sowRainMm || rain < 0.7 * normal });
+  }
+  return out;
+}
+
 export function buildInsights({ sum, recent, field, soil, terrain, cyNow, cyFuture, crops, currentPlan }) {
   const out = [];
   const add = (level, title, text, source) => out.push({ level, title, text, source });
 
+  // water: rain and satellite moisture for the same period, in one card
   if (recent) {
-    const p = recent.last3Pct;
-    add(p < -25 ? 'bad' : p < -10 ? 'warn' : 'good', 'Recent rain vs normal',
-      `The last 3 months (${recent.last3Label}) brought ${r0(recent.last3Rain)} mm of rain, ` +
-      `${Math.abs(r0(p))}% ${p < 0 ? 'below' : 'above'} the 25-year normal of ${r0(recent.last3Normal)} mm.` +
-      (p < -25 ? ' Soils are likely starting drier than usual.' : ''), 'NASA POWER');
+    const p = recent.last3Pct, m = field?.moistureRecent;
+    let sat = '';
+    if (m != null) sat = m < -0.03 ? ' Satellites confirm it: your field is drier than usual for this time of year.'
+      : m > 0.03 ? ' Satellites still see a bit more moisture in your field than usual, so earlier rain is still helping.'
+      : ' Satellites see about normal moisture in your field for this time of year.';
+    add(p < -25 ? 'bad' : p < -10 ? 'warn' : 'good', 'Water in the last 3 months',
+      `${recent.last3Label}: ${r0(recent.last3Rain)} mm of rain, ${Math.abs(r0(p))}% ${p < 0 ? 'less' : 'more'} than normal (${r0(recent.last3Normal)} mm).` + sat,
+      m != null ? 'NASA POWER rain + ESA Sentinel-2 moisture' : 'NASA POWER');
+  }
+  const dryAutumn = autumnCheck(recent, crops).filter(a => a.dry);
+  if (dryAutumn.length) {
+    const worst = dryAutumn.sort((a, b) => a.pct - b.pct)[0];
+    add('warn', 'Dry sowing time this autumn',
+      `${worst.months} ${worst.year} brought only ${r0(worst.rain)} mm of rain (${Math.abs(r0(worst.pct))}% below normal). ` +
+      `${dryAutumn.map(a => a.crop).slice(0, 3).join(', ')} sown this autumn may come up unevenly. Check how they emerged.`, 'NASA POWER');
   }
   if (field?.bareDays != null) {
     add(field.bareDays > 150 ? 'bad' : field.bareDays > 90 ? 'warn' : 'good', 'Bare soil',
-      `Your field was without plant cover for about ${field.bareDays} days in the last 12 months` +
+      `Your field had no plant cover for about ${field.bareDays} days in the last 12 months` +
       (field.bareMonths.length ? `, usually in ${field.bareMonths.map(m => MONTHS[m]).join(', ')}.` : '.') +
-      ' Bare soil loses moisture and topsoil to wind and rain.', 'ESA Sentinel-2 (Bare Soil Index + NDVI)');
-  }
-  if (field?.moistureChange) {
-    const { pct, points } = field.moistureChange;
-    const txt = pct != null ? `${Math.abs(r0(pct))}% ${pct < 0 ? 'lower' : 'higher'}` : `${Math.abs(points).toFixed(2)} index points ${points < 0 ? 'lower' : 'higher'}`;
-    add(points < -0.03 ? 'bad' : points < 0 ? 'warn' : 'good', 'Field moisture',
-      `The moisture index of your field over the last 12 months was ${txt} than in the same months of previous years.`,
-      'ESA Sentinel-2 (Moisture Index, NDMI)');
+      ' Bare soil loses water and topsoil to sun, wind and rain.', 'ESA Sentinel-2 (bare soil index + greenness)');
   }
   if (field && field.peakVals.length > 1) {
     const c = field.peakChange;
-    add(c < -0.05 ? 'warn' : 'good', 'Crop vigor',
-      `This year's peak greenness (NDVI ${field.peakVals.at(-1).toFixed(2)}) was ${c < 0 ? 'lower' : 'higher'} than the average of earlier years (${(field.peakVals.at(-1) - c).toFixed(2)}).` +
-      (c < -0.05 ? ' The crop was under more stress than usual.' : ''), 'ESA Sentinel-2 (NDVI)');
+    add(c < -0.05 ? 'warn' : 'good', 'Crop growth this year',
+      `Your crop's peak greenness this year was ${c < -0.05 ? 'lower' : c > 0.05 ? 'higher' : 'about the same'} compared with earlier years` +
+      ` (${field.peakVals.at(-1).toFixed(2)} vs ${(field.peakVals.at(-1) - c).toFixed(2)} on a 0–1 scale).` +
+      (c < -0.05 ? ' The crop was under more stress than usual.' : ''), 'ESA Sentinel-2 (greenness, NDVI)');
   }
-  add(sum.droughtYearsRecent >= 3 ? 'bad' : sum.droughtYearsRecent >= 2 ? 'warn' : 'good', 'Drought frequency',
-    `${sum.droughtYearsRecent} of the last 10 summers had less than 75% of normal growing-season rain. Driest month on average: ${MONTHS[sum.driestMonth - 1]}.`,
+  add(sum.droughtYearsRecent >= 3 ? 'bad' : sum.droughtYearsRecent >= 2 ? 'warn' : 'good', 'Dry summers',
+    `${sum.droughtYearsRecent} of the last 10 summers had less than three quarters of the normal summer rain. Driest month on average: ${MONTHS[sum.driestMonth - 1]}.`,
     'NASA POWER, 25 years');
-  add(sum.tempTrendDecade > 0.3 ? 'warn' : 'good', 'Warming trend',
-    `Average temperature here is changing by ${sum.tempTrendDecade >= 0 ? '+' : ''}${sum.tempTrendDecade.toFixed(2)} °C per decade` +
-    ` and yearly rain by ${sum.rainTrendDecade >= 0 ? '+' : ''}${r0(sum.rainTrendDecade)} mm per decade.`, 'NASA POWER, 25 years');
+  add(sum.tempTrendDecade > 0.3 ? 'warn' : 'good', 'Getting warmer',
+    `Here it is getting ${sum.tempTrendDecade >= 0 ? 'warmer' : 'cooler'} by about ${Math.abs(sum.tempTrendDecade).toFixed(1)} °C every 10 years` +
+    `, and yearly rain is ${sum.rainTrendDecade >= 0 ? 'up' : 'down'} by about ${Math.abs(r0(sum.rainTrendDecade))} mm every 10 years.`, 'NASA POWER, 25 years');
 
   // how the current crops hold up now vs 2035
   const main = [...new Set(currentPlan.map(i => i.split('+').at(-1)))];
-  const okRate = (cy, c) => mean(cy.rows.filter(r => r.crop === c).map(r => (r.ok ? 1 : 0))) * 100;
+  const okCount = (cy, c) => cy.rows.filter(r => r.crop === c && r.ok).length, n = cyNow.years.length;
   for (const c of main) {
-    const now = okRate(cyNow, c), fut = okRate(cyFuture, c);
-    if (now < 75 || fut < now - 5) {
-      add(fut < 60 ? 'bad' : 'warn', `${c}: future outlook`,
-        `${c} had enough water and no heat stress in ${r0(now)}% of past seasons. If current trends continue, that drops to about ${r0(fut)}% by 2035.`,
+    const now = okCount(cyNow, c), fut = okCount(cyFuture, c);
+    if (now < n * 0.75 || fut < now - 1) {
+      add(fut < n * 0.6 ? 'bad' : 'warn', `${c}: looking ahead`,
+        `${c} had a good season (enough water, no heat stress) in ${now} of the last ${n} years. If the warming trend continues, that would be about ${fut} of ${n} by 2035.`,
         'NASA POWER trend projection');
     }
   }
@@ -200,15 +247,26 @@ export function buildInsights({ sum, recent, field, soil, terrain, cyNow, cyFutu
     const s = terrain.slopePct;
     add(s > 6 ? 'bad' : s > 3 ? 'warn' : 'good', 'Slope and erosion',
       `Your field sits at ${r0(terrain.elevationM)} m with a slope of about ${s.toFixed(1)}%. ` +
-      (s > 3 ? 'Rain can wash away bare soil here, so keeping the ground covered matters.' : 'Mostly flat, so water erosion risk is low; wind erosion on bare soil is still possible.'),
+      (s > 3 ? 'Heavy rain can wash away bare soil here, so keeping the ground covered matters.' : 'Mostly flat, so water erosion risk is low; wind can still blow away bare soil.'),
       'NASA SRTM elevation');
   }
   if (soil && !soil.isDefault) {
     add(soil.socGKg < 10 ? 'warn' : 'good', 'Soil',
       `${soil.texture} soil, organic carbon ${soil.socGKg.toFixed(1)} g/kg${soil.socGKg < 10 ? ' (low)' : ''}, pH ${soil.ph.toFixed(1)}. ` +
-      `It can store roughly ${soil.awcMm} mm of water for crops.`, 'ISRIC SoilGrids');
+      `It can hold roughly ${soil.awcMm} mm of water for the crops' roots.`, 'ISRIC SoilGrids');
   }
   return out;
+}
+
+// Compare what the farmer entered with what the satellites saw each year
+export function satelliteHistory(field, history, crops) {
+  if (!field?.seasons?.length) return [];
+  const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
+  return field.seasons.filter(s => s.type !== 'unclear').map(s => {
+    const h = history?.find(x => x.year === s.year);
+    const expected = h ? (isAutumnSown(crop[h.crop]) ? 'autumn' : 'spring') : null;
+    return { year: s.year, saw: s.type, entered: h?.label ?? null, match: h ? expected === s.type : null };
+  });
 }
 
 // =============== 4. STRESS TEST ===============
@@ -228,11 +286,15 @@ export function cropYears(climate, crops, awcMm) {
         seasonRain += rain[yr][m];
       }
       const peakTemp = Math.max(...c.criticalMonths.map(m => temp[y][m]));
-      rows.push({ crop: c.crop, year: y, seasonRain, peakTemp, need: c.waterNeedMm, heatLimit: c.heatLimitC,
-        waterOk: seasonRain + awcMm >= ENOUGH_WATER_SHARE * c.waterNeedMm, heatOk: peakTemp <= c.heatLimitC, awcMm });
+      // autumn-sown crops also need some rain at sowing to establish (e.g. rapeseed in Aug–Sep)
+      const sowYear = isAutumnSown(c) ? y - 1 : y;
+      const sowRain = c.sowRainMonths ? c.sowRainMonths.reduce((a, m) => a + rain[sowYear][m], 0) : null;
+      rows.push({ crop: c.crop, year: y, seasonRain, peakTemp, sowRain, need: c.waterNeedMm, heatLimit: c.heatLimitC,
+        waterOk: seasonRain + awcMm >= ENOUGH_WATER_SHARE * c.waterNeedMm, heatOk: peakTemp <= c.heatLimitC,
+        sowOk: !c.sowRainMm || sowRain >= c.sowRainMm, awcMm });
     }
   }
-  rows.forEach(r => { r.ok = r.waterOk && r.heatOk; });
+  rows.forEach(r => { r.ok = r.waterOk && r.heatOk && r.sowOk; });
   return { rows, years };
 }
 
@@ -245,7 +307,7 @@ function itemOk(cy, item, year) {
   if (!r) return false;
   if (!cover) return r.ok;
   const waterOk = r.seasonRain - COVER_WATER_USE_MM + r.awcMm >= ENOUGH_WATER_SHARE * r.need;
-  return waterOk && r.heatOk;
+  return waterOk && r.heatOk && r.sowOk;
 }
 
 // bare months per year: gaps between one crop's harvest and the next sowing (rotation repeats)
@@ -369,94 +431,173 @@ export function pickStrategies(ranked, currentName, focusCrop, currentLabel = TY
   // monocultures are only ever shown as a baseline, never recommended
   const pool = (focusCrop ? ranked.filter(r => r.mains.includes(focusCrop)) : ranked).filter(r => r.rotation !== currentName && r.recommend);
   const picked = [];
-  const add = (r, label) => { if (r && !picked.some(p => p.rotation === r.rotation)) picked.push({ ...r, label }); };
+  const add = (r, label) => {
+    if (!r || picked.some(p => p.rotation === r.rotation)) return;
+    picked.push({ ...r, label: picked.some(p => p.label === label) ? 'Another option' : label });
+  };
   add(ranked.find(r => r.rotation === currentName), currentLabel);
   const saver = pool.find(r => r.type === 'moisture' || r.type === 'drought');
   add(saver, TYPE_LABEL[saver?.type]);
   add(pool.find(r => r.type === 'nitrogen'), TYPE_LABEL.nitrogen);
-  add(pool[0], TYPE_LABEL.best);
+  const cur = ranked.find(r => r.rotation === currentName);
+  add(pool[0], pool[0] && (!cur || verdict(pool[0], cur).key === 'better') ? TYPE_LABEL.best : TYPE_LABEL[pool[0]?.type]);
   for (const r of pool) { if (picked.length >= 4) break; add(r, TYPE_LABEL[r.type]); }
   for (const r of ranked.filter(x => x.recommend)) { if (picked.length >= 3) break; add(r, TYPE_LABEL[r.type]); }
   return picked;
 }
 
+// Plain-language comparison with what the farmer does now
+// Better = clearly better on what matters to the farmer, or more money AND more reliable at the same time.
+export function verdict(s, current) {
+  if (s.rotation === current.rotation) return { key: 'now', text: 'What you do now' };
+  const d = s.score - current.score;
+  const dNormal = s.profitNormal - current.profitNormal, dBad = s.profitBad - current.profitBad, dRisk = s.risk - current.risk;
+  const dominates = dBad >= 50 && dNormal >= 0 && dRisk >= 0;   // €5/dka more in bad years, not worse otherwise
+  const dominated = dNormal <= -50 && dBad <= 0 && dRisk <= 0;
+  const tradeOff = dNormal <= -30 && dRisk < 0; // earns less AND fails more often: never call that better
+  if ((d >= 3 && !tradeOff) || (dominates && d > -3)) return { key: 'better', text: 'Better for you' };
+  if (d <= -3 || dominated) return { key: 'worse', text: 'Worse for you' };
+  return { key: 'similar', text: 'About the same' };
+}
+
+// Why a crop failed the stress test, in words
+function failCause(rows) {
+  const dry = rows.filter(r => !r.waterOk).length, hot = rows.filter(r => !r.heatOk).length, sow = rows.filter(r => !r.sowOk).length;
+  const top = Math.max(dry, hot, sow);
+  return top === sow ? 'too little rain at sowing time' : top === dry ? 'too little rain while growing' : 'heat';
+}
+
 export function explainStrategy(s, current, ctx) {
-  const { crops, cy, field, soil, terrain, sum, weights, known = [], beginner } = ctx;
+  const { crops, cy, field, soil, terrain, sum, weights, known = [], beginner, money = x => `${eur(x)}/ha` } = ctx;
   const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
   const isCurrent = s.rotation === current.rotation;
+  const n = cy.years.length;
   const okCount = c => cy.rows.filter(r => r.crop === c && r.ok).length;
   const chosen = Object.entries(weights).filter(([, w]) => w >= 5).map(([k]) => k);
-  const now = beginner ? 'the typical rotation' : 'your current rotation';
+  const now = beginner ? 'the typical rotation' : 'what you do now';
 
-  // why: biggest gains on the priorities the farmer picked (fall back to all)
   const keys = chosen.length ? chosen : Object.keys(LABELS);
   const gains = keys.map(k => [k, s[k] - current[k]]).filter(([, d]) => d >= 5).sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const losses = keys.map(k => [k, current[k] - s[k]]).filter(([, d]) => d >= 5).sort((a, b) => b[1] - a[1]).slice(0, 1);
   const why = isCurrent
-    ? (beginner ? 'The most common rotation in Bulgaria, shown as a reference point.' : 'This is what you grow now, shown as the baseline for comparison.')
-    : `Matches your priorities with a score of ${r0(s.score)} (${now}: ${r0(current.score)}). ` +
-      (gains.length ? `Biggest gains on what you care about: ${gains.map(([k]) => `${LABELS[k]} (${r0(s[k])} vs ${r0(current[k])})`).join(', ')}.` : 'Similar on the points you care about most.');
+    ? (beginner ? 'The most common rotation in Bulgaria, shown for comparison.' : 'What you grow now, shown for comparison.')
+    : (gains.length ? `Better than ${now} on ${gains.map(([k]) => LABELS[k]).join(' and ')}.` : `Close to ${now} on the things you care about.`) +
+      (losses.length ? ` Weaker on ${LABELS[losses[0][0]]}.` : '');
 
-  const evidence = [];
-  for (const c of s.unique) evidence.push(`${c} had enough water and no heat stress in ${okCount(c)} of ${cy.years.length} past seasons (NASA POWER).`);
-  if (field?.bareDays > 0 && (isCurrent || s.bare < current.bare)) evidence.push(`Your field was bare ~${field.bareDays} days in the last year (Sentinel-2).`);
-  if (soil && !soil.isDefault && (isCurrent || s.legumes.length || s.covers)) evidence.push(`Soil organic carbon ${soil.socGKg.toFixed(1)} g/kg${soil.socGKg < 10 ? ' (low)' : ''}, ${soil.texture.toLowerCase()} texture (SoilGrids).`);
-  if (sum.droughtYearsRecent >= 2) evidence.push(`${sum.droughtYearsRecent} of the last 10 summers were dry (NASA POWER).`);
+  // one short evidence line instead of many
+  const evidence = [`Good seasons in the last ${n} years: ${s.unique.map(c => `${c} ${okCount(c)}/${n}`).join(' · ')} (NASA POWER).`];
+  if (field?.bareDays > 0 && !isCurrent && s.bare < current.bare) evidence.push(`Your field was bare ~${field.bareDays} days last year (Sentinel-2).`);
+  if (soil && !soil.isDefault && !isCurrent && (s.legumes.length || s.covers) && soil.socGKg < 15) evidence.push(`Soil organic carbon is ${soil.socGKg.toFixed(1)} g/kg (SoilGrids).`);
 
   const benefits = [];
   if (!isCurrent) {
-    const dW = current.waterDemand - s.waterDemand;
-    if (Math.abs(dW) >= 20) benefits.push(`${dW > 0 ? 'Uses' : 'Needs'} ~${Math.abs(r0(dW))} mm ${dW > 0 ? 'less' : 'more'} water per year than ${now}.`);
-    const dB = current.bare - s.bare;
-    if (dB >= 0.5) {
-      const pct = current.bare > 0 ? r0(dB / current.bare * 100) : 0;
-      benefits.push(`Bare soil drops from ~${current.bare.toFixed(1)} to ~${s.bare.toFixed(1)} months per year (about ${pct}% less exposure to erosion${terrain?.slopePct > 3 ? ', important on your slope' : ''}).`);
-    }
-    if (s.nSavedEur >= 5) benefits.push(`${s.covers ? 'Cover crops and legumes' : 'Legumes'} save roughly ${eur(s.nSavedEur)}/ha per year in nitrogen fertilizer.`);
+    const dP = s.profitNormal - current.profitNormal, dB = s.profitBad - current.profitBad;
+    benefits.push(`Profit in a normal year: ${money(s.profitNormal)} (${dP >= 0 ? '+' : ''}${money(dP)} vs now). In a bad year: ${money(s.profitBad)} (${dB >= 0 ? '+' : ''}${money(dB)}).`);
     const dR = s.risk - current.risk;
-    if (Math.abs(dR) >= 3) benefits.push(`Harvest success ${r0(s.risk)}% vs ${r0(current.risk)}%${dR < 0 ? ' (lower, see risks)' : ''}.`);
-    const dP = s.profitNormal - current.profitNormal;
-    benefits.push(`Typical profit ${eur(s.profitNormal)}/ha/yr vs ${eur(current.profitNormal)} (${dP >= 0 ? '+' : ''}${eur(dP)}); in a bad year ${eur(s.profitBad)} vs ${eur(current.profitBad)}.`);
-    if (s.soil - current.soil >= 10) benefits.push(`Builds soil health: score ${r0(s.soil)} vs ${r0(current.soil)}.`);
-    // the extra priorities, only when the farmer picked them
+    if (Math.abs(dR) >= 3) benefits.push(`Good seasons: ${r0(s.risk)}% vs ${r0(current.risk)}% now.`);
+    const dBare = current.bare - s.bare;
+    if (dBare >= 0.5) benefits.push(`Bare soil: ~${s.bare.toFixed(1)} instead of ~${current.bare.toFixed(1)} months a year${terrain?.slopePct > 3 ? ' (important on your slope)' : ''}.`);
+    const dW = current.waterDemand - s.waterDemand;
+    if (dW >= 20) benefits.push(`Needs ~${r0(dW)} mm less water per year.`);
+    if (s.nSavedEur >= 5) benefits.push(`${s.covers ? 'Cover crops and legumes' : 'Legumes'} leave nitrogen in the soil: ~${money(s.nSavedEur)} less fertilizer per year.`);
     const on = k => chosen.includes(k);
-    if (on('cost') && current.spend - s.spend >= 30) benefits.push(`Lower costs: about ${eur(current.spend - s.spend)}/ha less spent per year (seed, fertilizer, fuel).`);
-    if (on('labor') && s.labor - current.labor >= 10) benefits.push(`Less work: these crops need less time and labour (score ${r0(s.labor)} vs ${r0(current.labor)}).`);
+    if (on('cost') && current.spend - s.spend >= 30) benefits.push(`Lower costs: about ${money(current.spend - s.spend)} less spent per year.`);
+    if (on('labor') && s.labor - current.labor >= 10) benefits.push('Less work: these crops need less time and labour.');
     if (on('machinery')) {
       const needNew = s.unique.filter(c => !known.includes(c) && crop[c].switchDifficulty !== 'easy');
-      benefits.push(needNew.length ? `Machinery: ${needNew.join(', ')} may need equipment you don't have yet.` : 'Machinery: grown with standard grain equipment.');
+      benefits.push(needNew.length ? `Machinery: ${needNew.join(', ')} may need equipment you don't have yet.` : 'Machinery: works with standard grain equipment.');
     }
-    if (on('market') && s.market - current.market >= 10) benefits.push(`Easier to sell: crops with established buyers (score ${r0(s.market)} vs ${r0(current.market)}).`);
-    if (on('forage') && s.forage - current.forage >= 10) benefits.push(`Animal feed: ${s.unique.filter(c => crop[c].forageValue >= 2).join(', ') || 'some crops'} can be used as feed or hay.`);
-    if (on('pests') && s.pests - current.pests >= 10) benefits.push(`Breaks pest and disease cycles: ${new Set(s.groups).size} crop families, alternating every season.`);
+    if (on('market') && s.market - current.market >= 10) benefits.push('Easier to sell: crops with established buyers.');
+    if (on('forage') && s.forage - current.forage >= 10) benefits.push(`Animal feed: ${s.unique.filter(c => crop[c].forageValue >= 2).join(', ') || 'some crops'} can be fed or sold as hay.`);
+    if (on('pests') && s.pests - current.pests >= 10) benefits.push(`Breaks pest and disease cycles: ${new Set(s.groups).size} crop families, changing every season.`);
     if (on('subsidies') && s.subsidies - current.subsidies >= 10) benefits.push(`EU eco-schemes: ${[s.unique.length >= 3 && '3+ crops', s.legumes.length && 'nitrogen-fixing crops', s.bare <= 2 && 'soil covered most of the year'].filter(Boolean).join(', ')} often qualify for support.`);
-  } else {
-    benefits.push(`Bare soil ~${s.bare.toFixed(1)} months/yr, harvest success ${r0(s.risk)}%, typical profit ${eur(s.profitNormal)}/ha/yr.`);
   }
 
   const risks = [];
   const newCrops = [...s.unique, ...s.plan.filter(i => i.includes('+')).map(i => i.split('+')[0])]
     .filter((c, i, a) => a.indexOf(c) === i && !current.plan.join('+').includes(c) && !known.includes(c));
-  for (const c of newCrops) risks.push(`${c}: ${crop[c].notes}`);
-  const weak = s.unique.filter(c => okCount(c) < cy.years.length * 0.7);
-  for (const c of weak) {
-    const rows = cy.rows.filter(r => r.crop === c && !r.ok);
-    const dry = rows.filter(r => !r.waterOk).length, hot = rows.filter(r => !r.heatOk).length;
-    risks.push(`${c} failed the stress test in ${rows.length} of ${cy.years.length} seasons, mostly from ${dry >= hot ? 'too little rain' : 'heat'} in ${crop[c].criticalMonths.map(m => MONTHS[m - 1]).join('–')}.`);
+  for (const c of newCrops) risks.push(`${c}: ${crop[c].notes.replace(' (Estimated regional values.)', '')}`);
+  for (const c of s.unique.filter(c => okCount(c) < n * 0.75)) {
+    const bad = cy.rows.filter(r => r.crop === c && !r.ok);
+    risks.push(`${c} had a bad season in ${bad.length} of ${n} years, mostly from ${failCause(bad)}.`);
   }
   const repeated = [...new Set(s.mains.filter((m, i) => m === s.mains[(i + 1) % s.mains.length] && !crop[m].perennial))];
-  for (const m of repeated) risks.push(`${m} after ${m}: yields usually drop 10–20% and pests and diseases build up (included in the numbers).`);
-  if (s.riskFuture < s.risk - 5) risks.push(`If warming continues, harvest success may fall to ~${r0(s.riskFuture)}% by 2035.`);
+  for (const m of repeated) risks.push(`${m} after ${m}: yields usually drop 10–20% and pests and diseases build up (already counted in the numbers).`);
+  if (s.riskFuture < s.risk - 5) risks.push(`If warming continues, good seasons may drop to ~${r0(s.riskFuture)}% by 2035.`);
   if (soil.ph < 6 && s.unique.some(c => ['Peas', 'Alfalfa', 'Lentil', 'Chickpea'].includes(c))) risks.push(`Your soil is acidic (pH ${soil.ph.toFixed(1)}); some legumes may need liming.`);
-  if (!risks.length) risks.push('No major risks found in the data. Still check with a local agronomist.');
 
-  const gaps = ['Crop water needs, yields and prices are regional estimates, not your farm records.',
-    'Assumes rain-fed farming; irrigation would change the water results.'];
-  if (!field) gaps.push('No satellite history of the field was available, so bare-soil and moisture checks are missing.');
-  if (soil.isDefault) gaps.push('Soil data was unavailable; typical loam values were used.');
-  if (newCrops.length) gaps.push(`Local market and equipment for ${newCrops.join(', ')} are not checked by the tool.`);
-  if (chosen.includes('subsidies')) gaps.push('Eco-scheme rules change; check current requirements with the State Fund Agriculture (ДФЗ).');
+  return { why, evidence, benefits, risks, newCrops };
+}
 
-  return { why, evidence, benefits, risks, gaps };
+// Everything the tool can't know, shown once
+export function infoGaps({ field, soil, weights, newCrops = [] }) {
+  const gaps = ['Yields, prices and crop water needs are regional estimates. Enter your own yields and prices for better numbers.',
+    'Profit does not include EU area payments (they are the same whatever you grow).',
+    'Assumes no irrigation.',
+    'Weather is regional (NASA POWER, ~50 km grid), not a station on your field.'];
+  if (!field) gaps.push('No satellite history of this field was available, so bare soil and moisture checks are missing.');
+  if (soil?.isDefault) gaps.push('Soil data was unavailable; typical loam values were used.');
+  if (newCrops.length) gaps.push(`Local buyers and machinery for ${newCrops.join(', ')} are not checked.`);
+  if (weights?.subsidies >= 5) gaps.push('Eco-scheme rules change; check current requirements with the State Fund Agriculture (ДФЗ).');
+  return gaps;
+}
+
+// "What should I do?" in one card: what to sow next, when, why, and the main risk
+export function buildAnswer({ best, current, lastCrop, crops, cy, autumn = [], money = x => `${eur(x)}/ha`, today = new Date(), beginner, keep }) {
+  const crop = Object.fromEntries(crops.map(c => [c.crop, c]));
+  const plan = keep ? current.plan : best.plan;
+  const item = nextCrop(plan, lastCrop, crops);
+  const { cover, main } = split(item);
+  const sowCrop = crop[cover || main];
+  // next time the sowing month comes around
+  const m = sowCrop.sowMonth, nowM = today.getMonth() + 1, thisYear = today.getFullYear();
+  const justPassed = nowM > m && nowM - m <= 3; // e.g. October window, now November
+  const when = cover ? `right after your next harvest (summer ${nowM <= 8 ? thisYear : thisYear + 1})`
+    : justPassed ? `${sowCrop.sowWindow}. This year's window has just passed: if it's already sown, you're on track.`
+    : `${sowCrop.sowWindow} ${nowM <= m ? thisYear : thisYear + 1}`;
+  const title = cover ? `Next: a cover crop after harvest, then ${main}` : `Next season: sow ${main}`;
+
+  const reasons = [];
+  const target = keep ? current : best, n = cy.years.length;
+  const ok = c => cy.rows.filter(r => r.crop === c && r.ok).length;
+  reasons.push(`${main} had a good season in ${ok(main)} of the last ${n} years on this field's weather.`);
+  // the portfolio effect: do the rotation's crops have bad years at the same time?
+  const mains = [...new Set(target.plan.map(i => split(i).main))];
+  if (mains.length >= 2) {
+    const together = cy.years.filter(y => mains.every(c => !cy.rows.find(r => r.crop === c && r.year === y)?.ok));
+    const names = mains.length > 2 ? `${mains.slice(0, -1).join(', ')} and ${mains.at(-1)}` : mains.join(' and ');
+    reasons.push(together.length === 0
+      ? `${names} never had a bad year at the same time in the last ${n} years, so one protects the other.`
+      : `${names} had a bad year at the same time only ${together.length === 1 ? `once (${together[0]})` : `${together.length} times`} in ${n} years, so one protects the other.`);
+  }
+  if (!keep) {
+    const dB = target.profitBad - current.profitBad, dP = target.profitNormal - current.profitNormal;
+    if (dB > 5) reasons.push(`Earns more in bad years: ${money(target.profitBad)} instead of ${money(current.profitBad)}.`);
+    else if (dP > 5) reasons.push(`Higher typical profit: ${money(target.profitNormal)} instead of ${money(current.profitNormal)}.`);
+    if (current.bare - target.bare >= 0.5) reasons.push(`Soil stays covered longer: ~${target.bare.toFixed(1)} bare months a year instead of ~${current.bare.toFixed(1)}.`);
+    if (target.nSavedEur >= 5) reasons.push(`Saves ~${money(target.nSavedEur)} in nitrogen fertilizer per year.`);
+  }
+  const how = cover
+    ? `After harvesting, sow a cover crop mix (for example vetch + oats) as soon as possible. Work it into the soil in March, 3–4 weeks before sowing ${main} (${crop[main].sowWindow}).`
+    : null;
+
+  let risk = null;
+  const dry = autumn.find(a => a.crop === main && a.dry);
+  if (dry) risk = `${dry.months} ${dry.year} was ${Math.abs(r0(dry.pct))}% drier than normal: ${main} needs moisture at sowing. If it is dry again, wait for rain or choose a less sensitive crop.`;
+  else {
+    const bad = cy.rows.filter(r => r.crop === main && !r.ok);
+    if (bad.length) risk = `In ${bad.length} of ${n} years ${main} struggled, mostly from ${failCause(bad)}.`;
+  }
+  // be upfront about what the farmer gives up
+  let tradeOff = null;
+  if (!keep && target.profitNormal - current.profitNormal < -50) tradeOff = `Trade-off: in a normal year it earns less than ${beginner ? 'the typical rotation' : 'now'} (${money(target.profitNormal)} instead of ${money(current.profitNormal)}).`;
+  return { title, when, reasons: reasons.slice(0, 3), how, risk, tradeOff, rotation: target.rotation, keep, beginner };
+}
+
+// Wheat > Sunflower and Sunflower > Wheat are the same rotation
+export function sameRotation(a, b) {
+  if (a.length !== b.length) return false;
+  return a.some((_, k) => a.every((x, i) => x === b[(i + k) % b.length]));
 }
 
 // =============== 6. PLANTING HISTORY ===============
@@ -508,7 +649,7 @@ export function cropVerdict(cropName, cy, cyFuture, crops) {
   const rows = cy.rows.filter(r => r.crop === cropName);
   const ok = rows.filter(r => r.ok).length, n = rows.length;
   const fut = cyFuture.rows.filter(r => r.crop === cropName && r.ok).length;
-  const dry = rows.filter(r => !r.waterOk).length, hot = rows.filter(r => !r.heatOk).length;
+  const dry = rows.filter(r => !r.waterOk).length, hot = rows.filter(r => !r.heatOk).length, sow = rows.filter(r => !r.sowOk).length;
   const pct = ok / n * 100, pctF = fut / n * 100;
   const level = pct >= 80 ? 'good' : pct >= 60 ? 'warn' : 'bad';
   const verdict = level === 'good' ? `Yes, ${cropName} suits this field.` : level === 'warn' ? `${cropName} is possible, but risky in dry or hot years.` : `${cropName} is a high-risk choice here.`;
@@ -520,11 +661,11 @@ export function cropVerdict(cropName, cy, cyFuture, crops) {
 
   return {
     level, verdict, pct, pctF,
-    detail: `In the last ${n} seasons, ${cropName} had enough water and no heat stress in ${ok}. ` +
-      (n - ok ? `Problems: ${dry} dry seasons, ${hot} with heat stress in ${c.criticalMonths.map(m => MONTHS[m - 1]).join('–')}. ` : '') +
-      `By 2035, if trends continue: about ${Math.round(pctF)}% of seasons OK.`,
+    detail: `${cropName} had a good season (enough water, no heat stress) in ${ok} of the last ${n} years on this field's weather. ` +
+      (n - ok ? `Problems: ${[sow && `${sow}× too dry at sowing`, dry && `${dry}× too dry while growing`, hot && `${hot}× heat in ${c.criticalMonths.map(m => MONTHS[m - 1]).join('–')}`].filter(Boolean).join(', ')}. ` : '') +
+      `If the warming trend continues: about ${fut} of ${n} by 2035. Sowing time: ${c.sowWindow}.`,
     alternatives,
-    note: c.notes,
+    note: c.notes.replace(' (Estimated regional values.)', ''),
   };
 }
 

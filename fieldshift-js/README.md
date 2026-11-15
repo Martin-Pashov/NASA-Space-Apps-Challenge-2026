@@ -25,7 +25,10 @@ A farmer can see his crops. He can't see how many days his soil stayed bare, whe
 | Province borders | Natural Earth (public domain) | Map layer |
 | Address search | OpenStreetMap Nominatim | Finding the village |
 
-4. **Results**:
+4. **Results** (answer first, details on demand):
+   - **Answer card**: what to sow next season, when (sowing window), up to 3 reasons with numbers, the main risk, any trade-off, and how to fit a cover crop in.
+   - **Satellites vs your memory**: autumn-sown crops are already green in March–April, spring crops are bare; FieldShift detects which kind grew each year and flags differences from the history you entered.
+   - **Decares by default** (switch to hectares), and your own yields and prices to replace the regional estimates.
    - **What the satellites see that you can't**: plain-language insight cards (bare days, moisture vs earlier years, rain vs normal, drought frequency, warming, crop outlook for 2035, slope, soil).
    - **Charts**: field greenness and moisture over time, rain vs normal, warming trend, crop survival now vs 2035.
    - **Crop check** or **most reliable crops** for the field; a **basics** box for beginners.
@@ -65,9 +68,10 @@ The browser never calls the data APIs directly, so the Copernicus secret stays o
 
 ## Method
 
-- **Stress test:** every crop is checked against every past season: enough water (season rain + soil water ≥ 75% of crop need) and no heat stress in its critical months.
+- **Stress test:** every crop is checked against every past season: enough rain at sowing for autumn crops (e.g. rapeseed needs ≥ 40 mm in Aug–Sep), enough water while growing (season rain + soil water ≥ 75% of crop need) and no heat stress in its sensitive months.
 - **2035 outlook:** past weather shifted along the measured temperature and rain trend. A projection, not a forecast.
-- **Scores (0–100):** moisture (rain vs crop needs), erosion (months of bare soil between crops), income (typical profit using each year's real outcome), soil health (legumes, cover crops, diversity), reliability (share of seasons that passed). Weighted by the farmer's priorities.
+- **Verdicts:** options are shown as *Better / About the same / Worse for you*. Better means clearly better on what you picked, or more money in bad years without being worse otherwise. Never better if it earns less and fails more often.
+- **Scores (0–100, internal):** moisture (rain vs crop needs), erosion (months of bare soil between crops), income (typical profit using each year's real outcome), soil health (legumes, cover crops, diversity), reliability (share of seasons that passed). Weighted by the farmer's priorities.
 - **Rotation effects:** a crop after itself yields ~15% less; perennials have an establishment year; hard-to-adopt crops count less unless you already grow them; monocultures are never recommended.
 - **Satellite indices:** clouds and shadows removed with the Sentinel-2 scene classification (SCL). Bare = BSI > 0.05 and NDVI < 0.25 (calibrated on real Dobrudzha fields).
 

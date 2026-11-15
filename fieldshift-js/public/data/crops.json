@@ -11,8 +11,8 @@
   "heatLimitC": 24,
   "legume": false,
   "nFixedKgHa": 0,
-  "yieldTHa": 5.5,
-  "priceEurT": 200,
+  "yieldTHa": 6.0,
+  "priceEurT": 175,
   "costEurHa": 700,
   "switchDifficulty": "easy",
   "notes": "Standard crop for the region; equipment and buyers usually available. (Estimated regional values.)",
@@ -23,7 +23,14 @@
   "inputCostLevel": 2,
   "forageValue": 1,
   "marketEase": 3,
-  "pestBreak": false
+  "pestBreak": false,
+  "sowRainMonths": [
+   10,
+   11
+  ],
+  "sowRainMm": 40,
+  "sowWindow": "early–late October",
+  "sowMonth": 10
  },
  {
   "crop": "Durum wheat",
@@ -49,7 +56,14 @@
   "inputCostLevel": 2,
   "forageValue": 1,
   "marketEase": 2,
-  "pestBreak": false
+  "pestBreak": false,
+  "sowRainMonths": [
+   10,
+   11
+  ],
+  "sowRainMm": 40,
+  "sowWindow": "mid–late October",
+  "sowMonth": 10
  },
  {
   "crop": "Barley",
@@ -63,8 +77,8 @@
   "heatLimitC": 23.5,
   "legume": false,
   "nFixedKgHa": 0,
-  "yieldTHa": 5.0,
-  "priceEurT": 180,
+  "yieldTHa": 5.5,
+  "priceEurT": 150,
   "costEurHa": 600,
   "switchDifficulty": "easy",
   "notes": "Similar machinery to wheat; feed and malting buyers. (Estimated regional values.)",
@@ -75,7 +89,14 @@
   "inputCostLevel": 2,
   "forageValue": 2,
   "marketEase": 3,
-  "pestBreak": false
+  "pestBreak": false,
+  "sowRainMonths": [
+   9,
+   10
+  ],
+  "sowRainMm": 30,
+  "sowWindow": "late September–mid October",
+  "sowMonth": 10
  },
  {
   "crop": "Triticale",
@@ -101,7 +122,14 @@
   "inputCostLevel": 1,
   "forageValue": 3,
   "marketEase": 2,
-  "pestBreak": false
+  "pestBreak": false,
+  "sowRainMonths": [
+   9,
+   10
+  ],
+  "sowRainMm": 30,
+  "sowWindow": "October",
+  "sowMonth": 10
  },
  {
   "crop": "Oats",
@@ -126,7 +154,9 @@
   "inputCostLevel": 1,
   "forageValue": 3,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "March",
+  "sowMonth": 3
  },
  {
   "crop": "Rye",
@@ -152,7 +182,14 @@
   "inputCostLevel": 1,
   "forageValue": 2,
   "marketEase": 1,
-  "pestBreak": false
+  "pestBreak": false,
+  "sowRainMonths": [
+   9,
+   10
+  ],
+  "sowRainMm": 30,
+  "sowWindow": "late September–October",
+  "sowMonth": 9
  },
  {
   "crop": "Rapeseed",
@@ -170,7 +207,7 @@
   "priceEurT": 450,
   "costEurHa": 750,
   "switchDifficulty": "medium",
-  "notes": "Needs moisture at autumn sowing; dry autumns cause poor establishment. (Estimated regional values.)",
+  "notes": "Needs rain at sowing in late August–September; in dry autumns it establishes poorly. (Estimated regional values.)",
   "perennial": false,
   "nameBg": "Рапица",
   "group": "oilseed",
@@ -178,7 +215,14 @@
   "inputCostLevel": 3,
   "forageValue": 0,
   "marketEase": 3,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowRainMonths": [
+   8,
+   9
+  ],
+  "sowRainMm": 40,
+  "sowWindow": "late August–mid September",
+  "sowMonth": 9
  },
  {
   "crop": "Sunflower",
@@ -204,7 +248,9 @@
   "inputCostLevel": 2,
   "forageValue": 0,
   "marketEase": 3,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "early–late April",
+  "sowMonth": 4
  },
  {
   "crop": "Corn",
@@ -230,7 +276,9 @@
   "inputCostLevel": 3,
   "forageValue": 2,
   "marketEase": 3,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "mid-April–early May",
+  "sowMonth": 4
  },
  {
   "crop": "Sorghum",
@@ -256,7 +304,9 @@
   "inputCostLevel": 1,
   "forageValue": 2,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "early–mid May",
+  "sowMonth": 5
  },
  {
   "crop": "Millet",
@@ -281,7 +331,9 @@
   "inputCostLevel": 1,
   "forageValue": 2,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "May–early June",
+  "sowMonth": 5
  },
  {
   "crop": "Soybean",
@@ -307,7 +359,9 @@
   "inputCostLevel": 2,
   "forageValue": 1,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "late April–mid May",
+  "sowMonth": 5
  },
  {
   "crop": "Peas",
@@ -333,7 +387,9 @@
   "inputCostLevel": 1,
   "forageValue": 2,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "February–March",
+  "sowMonth": 3
  },
  {
   "crop": "Chickpea",
@@ -358,7 +414,9 @@
   "inputCostLevel": 1,
   "forageValue": 0,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "March",
+  "sowMonth": 3
  },
  {
   "crop": "Lentil",
@@ -383,7 +441,9 @@
   "inputCostLevel": 1,
   "forageValue": 0,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "March",
+  "sowMonth": 3
  },
  {
   "crop": "Field beans",
@@ -409,7 +469,9 @@
   "inputCostLevel": 1,
   "forageValue": 2,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "February–March",
+  "sowMonth": 3
  },
  {
   "crop": "Vetch",
@@ -434,7 +496,14 @@
   "inputCostLevel": 1,
   "forageValue": 3,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowRainMonths": [
+   9,
+   10
+  ],
+  "sowRainMm": 30,
+  "sowWindow": "late September–October",
+  "sowMonth": 10
  },
  {
   "crop": "Alfalfa",
@@ -461,7 +530,9 @@
   "forageValue": 3,
   "marketEase": 1,
   "pestBreak": true,
-  "establishShare": 0.5
+  "establishShare": 0.5,
+  "sowWindow": "April, or late August",
+  "sowMonth": 4
  },
  {
   "crop": "Coriander",
@@ -486,7 +557,9 @@
   "inputCostLevel": 1,
   "forageValue": 0,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "March",
+  "sowMonth": 3
  },
  {
   "crop": "Buckwheat",
@@ -511,7 +584,9 @@
   "inputCostLevel": 1,
   "forageValue": 0,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "May",
+  "sowMonth": 5
  },
  {
   "crop": "Sugar beet",
@@ -537,7 +612,9 @@
   "inputCostLevel": 3,
   "forageValue": 1,
   "marketEase": 1,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "late March–April",
+  "sowMonth": 4
  },
  {
   "crop": "Potatoes",
@@ -563,7 +640,9 @@
   "inputCostLevel": 3,
   "forageValue": 0,
   "marketEase": 2,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowWindow": "late March–April",
+  "sowMonth": 4
  },
  {
   "crop": "Lavender",
@@ -590,7 +669,9 @@
   "forageValue": 0,
   "marketEase": 2,
   "pestBreak": true,
-  "establishShare": 0
+  "establishShare": 0,
+  "sowWindow": "planting in autumn or March",
+  "sowMonth": 3
  },
  {
   "crop": "Cover crop",
@@ -616,6 +697,12 @@
   "inputCostLevel": 1,
   "forageValue": 1,
   "marketEase": 0,
-  "pestBreak": true
+  "pestBreak": true,
+  "sowRainMonths": [
+   7,
+   8
+  ],
+  "sowWindow": "right after the summer harvest (July–August)",
+  "sowMonth": 8
  }
 ]

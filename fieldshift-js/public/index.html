@@ -96,6 +96,7 @@
     <div class="go">
       <button id="analyze" class="btn primary" disabled>Analyse my field</button>
       <p id="goHint" class="muted">Select a field on the map first.</p>
+      <p class="muted small">🔒 Free, no account. Your field's location is only used to fetch public satellite and climate data.</p>
     </div>
   </div>
 
@@ -116,6 +117,9 @@
       <button id="back" class="btn ghost">← Change field or goal</button>
       <div class="topbar-info"><b id="placeName"></b> <span class="muted" id="coords"></span><br><span class="muted" id="historyLabel"></span></div>
     </div>
+    <div class="units">Show areas in: <button class="unit-btn" data-unit="dka">decares (dka)</button><button class="unit-btn" data-unit="ha">hectares (ha)</button></div>
+
+    <section id="answer" class="card answer"></section>
 
     <section id="basics" class="card basics" hidden>
       <h2>New to crop rotation? The basics in 30 seconds</h2>
@@ -134,39 +138,57 @@
       <div id="insights" class="insights"></div>
     </section>
 
+    <section id="satHistory" class="card" hidden></section>
+
+    <section class="card">
+      <h2>Your options for the next 3 years</h2>
+      <p class="muted">Each option is checked against every season of the last 24 years of weather on this field.</p>
+      <div class="table-wrap"><table id="compare" class="compare"></table></div>
+      <div id="strategies" class="strategies"></div>
+      <details class="adjust-wrap" id="ownWrap"><summary>Use your own yields and prices</summary>
+        <p class="muted">Change the numbers to match your farm. All profits update right away.</p>
+        <div id="ownNumbers" class="own"></div>
+      </details>
+      <details class="adjust-wrap"><summary>Fine-tune what matters to you</summary><div id="adjust" class="adjust"></div></details>
+    </section>
+
+    <section class="card">
+      <h2>Crops that suit this field</h2>
+      <p class="muted">Good seasons = years with enough rain at sowing and while growing, and no heat stress, on this field's weather.</p>
+      <div class="table-wrap"><table id="cropTable"></table></div>
+      <p class="muted">🌱 = leaves nitrogen in the soil · ⚠️ = this autumn was too dry at sowing time</p>
+    </section>
+
     <section class="card">
       <h2>Your field over time</h2>
       <div class="charts">
-        <div><p class="muted">Greenness (NDVI) and moisture (NDMI) of your field, every 10 days · ESA Sentinel-2</p><div class="chart"><canvas id="fieldChart"></canvas></div><p class="muted" id="fieldChartNote"></p></div>
-        <div><p class="muted">Rain in the last 12 months vs normal (mm) · NASA POWER</p><div class="chart"><canvas id="rainChart"></canvas></div></div>
+        <div><p class="chart-title">Greenness of your field (higher = more plant growth)</p><p class="muted">ESA Sentinel-2, every 10 days. Blue = moisture in the plants and soil.</p><div class="chart"><canvas id="fieldChart"></canvas></div><p class="muted" id="fieldChartNote"></p></div>
+        <div><p class="chart-title">Rain in the last 12 months vs a normal year (mm)</p><p class="muted">NASA POWER</p><div class="chart"><canvas id="rainChart"></canvas></div></div>
       </div>
       <div class="charts">
-        <div><p class="muted">Average temperature per year (°C) · NASA POWER</p><div class="chart"><canvas id="tempChart"></canvas></div></div>
-        <div><p class="muted">How often each crop survived the past 25 years vs 2035 trend (% of seasons)</p><div class="chart"><canvas id="cropChart"></canvas></div></div>
+        <div><p class="chart-title">Average temperature per year (°C)</p><p class="muted">NASA POWER</p><div class="chart"><canvas id="tempChart"></canvas></div></div>
+        <div><p class="chart-title">Good seasons out of the last 24 years, and by 2035</p><p class="muted">NASA POWER stress test</p><div class="chart tall"><canvas id="cropChart"></canvas></div></div>
       </div>
-    </section>
-
-    <section class="card">
-      <h2>Strategies for the next 3 years</h2>
-      <p class="action" id="action"></p>
-      <details class="adjust-wrap"><summary>Fine-tune your priorities</summary><div id="adjust" class="adjust"></div></details>
-      <div class="table-wrap"><table id="compare"></table></div>
-      <div id="strategies" class="strategies"></div>
     </section>
 
     <details class="card">
-      <summary>All rotations ranked</summary>
+      <summary>What this tool doesn't know</summary>
+      <ul id="gaps"></ul>
+    </details>
+
+    <details class="card">
+      <summary>All rotations compared</summary>
       <div class="table-wrap"><table id="ranking"></table></div>
     </details>
 
     <details class="card">
-      <summary>How this works, data sources and limitations</summary>
-      <p><b>Data, fetched live for your field:</b> NASA POWER (25 years of monthly temperature and rain + the last 12 months daily), ESA Copernicus Sentinel-2 via Sentinel Hub (NDVI, SAVI, moisture index NDMI and Bare Soil Index every 10 days for 5 years, only inside your field outline, clouds removed), ISRIC SoilGrids (texture, organic carbon, pH), NASA SRTM elevation (slope). Field outlines from OpenStreetMap, province borders from Natural Earth.</p>
-      <p><b>Stress test:</b> every crop is checked against every past season: enough water (season rain + soil water ≥ 75% of crop need) and no heat stress in its critical months. The 2035 outlook shifts past weather along the measured trend. It's a projection, not a forecast.</p>
-      <p><b>Scores (0–100):</b> moisture, erosion (bare months between crops), income (typical profit with each year's real outcome), soil health (legumes, cover crops, variety), reliability (seasons that passed), costs, labour, machinery fit, market, animal feed, pest-cycle breaks and EU eco-scheme fit. Your priorities weight them.</p>
-      <p><b>Limitations:</b> crop values are regional estimates, farming is assumed rain-fed. FieldShift supports your decisions; it doesn't replace your experience or a local agronomist.</p>
+      <summary>How this works and where the data comes from</summary>
+      <p><b>Data, fetched live for your field:</b> NASA POWER (25 years of monthly temperature and rain + the last 12 months daily), ESA Copernicus Sentinel-2 via Sentinel Hub (greenness NDVI, SAVI, moisture NDMI and bare soil index every 10 days for 5 years, only inside your field outline, clouds removed), ISRIC SoilGrids (texture, organic carbon, pH), NASA SRTM elevation (slope). Field outlines from OpenStreetMap, province borders from Natural Earth.</p>
+      <p><b>Stress test:</b> every crop is checked against every past season: enough rain at sowing (autumn crops), enough water while growing (rain + water stored in the soil), and no heat stress in its sensitive months. The 2035 outlook shifts past weather along the measured trend. It's a projection, not a forecast.</p>
+      <p><b>Satellite history:</b> crops sown in autumn (wheat, barley, rapeseed) are already green in March–April; spring crops (sunflower, corn) are still bare then. That's how we tell them apart from space.</p>
+      <p><b>Comparing options:</b> profit uses each year's real outcome (bad season = half yield) plus nitrogen left by legumes; a crop after itself loses ~15%. "Better / About the same / Worse fit" combines what you said matters to you.</p>
     </details>
-    <p class="disclaimer">FieldShift helps you explore options. Always check new crops with a local agronomist, your buyers and your equipment.</p>
+    <p class="disclaimer">🔒 Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. FieldShift helps you explore options. Always check new crops with a local agronomist, your buyers and your machinery.</p>
   </div>
 
   <script type="module" src="app.js"></script>

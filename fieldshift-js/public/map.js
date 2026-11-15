@@ -28,9 +28,10 @@ export async function initMap(changeHandler) {
       layer.on('mouseover', () => layer.setStyle({ fillOpacity: 0.15, weight: 2.5 }));
       layer.on('mouseout', () => provinces.resetStyle(layer));
       layer.on('click', e => {
-        if (map.pm.globalDrawModeEnabled()) return;
-        if (map.getZoom() < 10) map.fitBounds(layer.getBounds()); // zoom to the province
-        else handleClick(e.latlng);                                // zoomed in: select a field
+        if (drawing()) return;
+        // first click zooms to the province; once you're in it, clicks select fields
+        if (map.getZoom() < map.getBoundsZoom(layer.getBounds()) - 0.5) map.fitBounds(layer.getBounds());
+        else handleClick(e.latlng);
       });
     },
   });
@@ -40,7 +41,12 @@ export async function initMap(changeHandler) {
   } catch { /* the layer is optional */ }
   L.control.layers({ Satellite: satellite, Map: streets }, { 'Provinces (oblasti)': provinces }, { collapsed: false }).addTo(map);
 
-  // Drawing tools (Leaflet-Geoman)
+  map.on('click', e => handleClick(e.latlng));
+  map.on('zoomend', () => { if (!fieldLayer) hint(map.getZoom() < 12 ? 'Zoom in and click on your field' : 'Click on your field to select it'); });
+  hint('Zoom in and click on your field');
+
+  // Drawing tools (Leaflet-Geoman). The map still works without them.
+  if (!map.pm) { console.warn('Drawing tools not loaded: run "npm install" in the fieldshift-js folder.'); return; }
   map.pm.addControls({
     position: 'topleft', drawMarker: false, drawCircleMarker: false, drawPolyline: false, drawCircle: false,
     drawText: false, cutPolygon: false, rotateMode: false, drawRectangle: true, drawPolygon: true,
@@ -48,13 +54,12 @@ export async function initMap(changeHandler) {
   });
   map.pm.setPathOptions(FIELD_STYLE);
   map.on('pm:create', e => setFieldLayer(e.layer, 'Drawn by you. Drag the corners to adjust.'));
-  map.on('click', e => handleClick(e.latlng));
-  map.on('zoomend', () => { if (!fieldLayer) hint(map.getZoom() < 12 ? 'Zoom in and click on your field' : 'Click on your field to select it'); });
-  hint('Zoom in and click on your field');
 }
 
+const drawing = () => !!map.pm && (map.pm.globalDrawModeEnabled() || map.pm.globalRemovalModeEnabled() || map.pm.globalDragModeEnabled());
+
 function handleClick(latlng) {
-  if (map.pm.globalDrawModeEnabled() || map.pm.globalRemovalModeEnabled() || map.pm.globalDragModeEnabled()) return;
+  if (drawing()) return;
   if (fieldLayer && contains(fieldLayer.toGeoJSON().geometry, latlng.lat, latlng.lng)) return;
   if (map.getZoom() < 12) { map.setView(latlng, 15); hint('Now click on your field'); return; }
   selectAt(latlng.lat, latlng.lng);
@@ -81,7 +86,7 @@ function setFieldLayer(layer, note) {
   fieldLayer = layer;
   if (!map.hasLayer(layer)) layer.addTo(map);
   layer.setStyle?.(FIELD_STYLE);
-  layer.pm.enable({ allowSelfIntersection: false });
+  layer.pm?.enable({ allowSelfIntersection: false });
   layer.off('pm:change pm:edit pm:dragend pm:remove');
   layer.on('pm:change pm:edit pm:dragend', () => emit());
   layer.on('pm:remove', () => { fieldLayer = null; emit(); });
