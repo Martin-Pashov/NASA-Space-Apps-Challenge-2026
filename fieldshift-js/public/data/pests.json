@@ -1,0 +1,2541 @@
+{
+  "version": 1,
+  "note": "Agronomic reference for Bulgaria. Always confirm with a local agronomist and use only plant protection products registered by the Bulgarian Food Safety Agency (BFSA / БАБХ), following the label.",
+  "crops": {
+    "Wheat": {
+      "pests": [
+        {
+          "id": "sunn-pest",
+          "name": "Sunn pest",
+          "nameBg": "Житна дървеница",
+          "latin": "Eurygaster spp. (E. integriceps, E. maura)",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "In spring overwintered adults suck the stems so the central leaf or whole ear turns white; later the nymphs suck the filling grain, leaving small dark puncture spots and ruining baking quality.",
+          "scout": "Check field edges next to forest belts from April, then count nymphs in late May to June with a 0.25 m² frame. Commonly used thresholds are about 2 overwintered adults per m² in spring and 4-8 nymphs per m² at grain filling (lower for seed and quality wheat).",
+          "action": "Grow early-maturing varieties, keep nitrogen balanced and harvest on time so nymphs have less time to feed. Natural egg parasites (small wasps) kill many eggs, so avoid unneeded early sprays. If the threshold is exceeded, spray a pyrethroid or other insecticide registered for cereals, starting with the field edges for adults.",
+          "satellite": "Usually not visible; heavy spring damage shows as small whitish patches near field edges."
+        },
+        {
+          "id": "cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": "White-striped upper leaves can lower NDVI in strips or patches in late May, often stronger near field edges."
+        },
+        {
+          "id": "cereal-aphids",
+          "name": "Cereal aphids",
+          "nameBg": "Житни листни въшки",
+          "latin": "Sitobion avenae, Rhopalosiphum padi, Schizaphis graminum",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6,
+            10,
+            11
+          ],
+          "risk": {
+            "tMinC": 16,
+            "tMaxC": 30,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Green or brown aphid colonies on the ears and flag leaf, sticky honeydew and black sooty mould. Autumn aphids spread barley yellow dwarf virus: patches of yellow or reddish, stunted plants in spring.",
+          "scout": "In autumn check 50 plants at the 1-3 leaf stage in warm weather. In late May check 50 ears; a common threshold is about 5 aphids per ear before the milky-ripe stage.",
+          "action": "Avoid very early autumn sowing and control volunteer cereals that act as a 'green bridge'. Ladybirds, hoverflies and parasitic wasps often control spring aphids. Spray only above threshold, with an insecticide registered for aphids on cereals, preferably one that spares beneficial insects.",
+          "satellite": "Virus patches show as round spots of lower NDVI in spring that do not recover after fertilizing."
+        },
+        {
+          "id": "yellow-rust",
+          "name": "Yellow (stripe) rust",
+          "nameBg": "Жълта ръжда",
+          "latin": "Puccinia striiformis",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 8,
+            "tMaxC": 23,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Yellow-orange powdery pustules in long stripes along the leaf veins; affected leaves dry out early and the grain stays small.",
+          "scout": "From tillering, walk the field weekly in April-May looking for first 'hot spots'. Act at the first stripes on susceptible varieties, especially in cool, damp springs.",
+          "action": "Choose resistant varieties (the most effective measure), avoid very early sowing and too much nitrogen, and destroy volunteer cereals. If it appears on upper leaves, use a triazole or strobilurin fungicide registered for cereals; protecting the flag leaf matters most.",
+          "satellite": "Round foci of lower NDVI in April-May that grow quickly over 1-2 weeks."
+        },
+        {
+          "id": "brown-rust",
+          "name": "Brown (leaf) rust",
+          "nameBg": "Кафява ръжда",
+          "latin": "Puccinia triticina",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 30,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Small round orange-brown pustules scattered over the leaves, mostly in warm weather in May-June; leaves dry early and grain is lighter.",
+          "scout": "At ear emergence check the flag leaf and the leaf below on 20 plants. Act if pustules are spreading on these leaves before milky ripeness.",
+          "action": "Grow resistant varieties and destroy volunteer cereals after harvest. If needed, use a triazole or strobilurin fungicide registered for cereals, timed to protect the flag leaf.",
+          "satellite": "Gradual NDVI decline of the whole canopy in late May-June, earlier than in healthy fields."
+        },
+        {
+          "id": "septoria",
+          "name": "Septoria leaf blotch",
+          "nameBg": "Септориоза",
+          "latin": "Zymoseptoria tritici",
+          "type": "disease",
+          "months": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Brown blotches with tiny black dots on the lower leaves, moving up the plant with rain splash.",
+          "scout": "At stem elongation check leaves 3 and 4 from the top on 20 plants. Risk is high after several rainy days in April-May.",
+          "action": "Use rotation, bury infected residue and avoid very early sowing; choose tolerant varieties. In wet springs, protect the flag leaf with a fungicide registered for wheat (e.g. triazole plus SDHI mixture).",
+          "satellite": "Canopy greenness falls from the bottom up, so NDVI drops slowly and evenly rather than in patches."
+        },
+        {
+          "id": "fusarium-head-blight",
+          "name": "Fusarium head blight",
+          "nameBg": "Фузариоза по класа",
+          "latin": "Fusarium graminearum, F. culmorum",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 3,
+          "signs": "Some spikelets on green ears turn white early, often with pink-orange mould at the base; grains are shrivelled, chalky and can contain mycotoxins (DON).",
+          "scout": "Watch the forecast at flowering (usually mid-May): rain and warm weather (over about 18°C) during flowering means high risk, especially after corn.",
+          "action": "Avoid sowing after corn or plough in corn stubble, and choose less susceptible varieties. If rain is forecast at flowering, apply a triazole fungicide registered for ear diseases at early to mid flowering. Harvest and dry grain promptly.",
+          "satellite": "Rarely visible early; premature whitening of ears can lower late-season NDVI."
+        }
+      ],
+      "nutrients": {
+        "N": 140,
+        "P2O5": 60,
+        "K2O": 50,
+        "note": "Split nitrogen: a small part at sowing only if needed, most in late winter and at stem elongation; test soil every 4-5 years, as many Bulgarian soils are low in available phosphorus."
+      }
+    },
+    "Durum wheat": {
+      "pests": [
+        {
+          "id": "durum-sunn-pest",
+          "name": "Sunn pest",
+          "nameBg": "Житна дървеница",
+          "latin": "Eurygaster spp. (E. integriceps, E. maura)",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "In spring overwintered adults suck the stems so the central leaf or whole ear turns white; later the nymphs suck the filling grain, leaving small dark puncture spots and ruining baking quality.",
+          "scout": "Check field edges next to forest belts from April, then count nymphs in late May to June with a 0.25 m² frame. Commonly used thresholds are about 2 overwintered adults per m² in spring and 4-8 nymphs per m² at grain filling (lower for seed and quality wheat). Durum is sold on quality, so use the lower threshold.",
+          "action": "Grow early-maturing varieties, keep nitrogen balanced and harvest on time so nymphs have less time to feed. Natural egg parasites (small wasps) kill many eggs, so avoid unneeded early sprays. If the threshold is exceeded, spray a pyrethroid or other insecticide registered for cereals, starting with the field edges for adults.",
+          "satellite": null
+        },
+        {
+          "id": "durum-fusarium-head-blight",
+          "name": "Fusarium head blight",
+          "nameBg": "Фузариоза по класа",
+          "latin": "Fusarium graminearum, F. culmorum",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 3,
+          "signs": "Some spikelets on green ears turn white early, often with pink-orange mould at the base; grains are shrivelled, chalky and can contain mycotoxins (DON). Durum wheat is more susceptible than common wheat.",
+          "scout": "Watch the forecast at flowering (usually mid-May): rain and warm weather (over about 18°C) during flowering means high risk, especially after corn.",
+          "action": "Avoid sowing after corn or plough in corn stubble, and choose less susceptible varieties. If rain is forecast at flowering, apply a triazole fungicide registered for ear diseases at early to mid flowering. Harvest and dry grain promptly.",
+          "satellite": "Rarely visible early; premature whitening of ears can lower late-season NDVI."
+        },
+        {
+          "id": "durum-brown-rust",
+          "name": "Brown (leaf) rust",
+          "nameBg": "Кафява ръжда",
+          "latin": "Puccinia triticina",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 30,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Small round orange-brown pustules scattered over the leaves, mostly in warm weather in May-June; leaves dry early and grain is lighter.",
+          "scout": "At ear emergence check the flag leaf and the leaf below on 20 plants. Act if pustules are spreading on these leaves before milky ripeness.",
+          "action": "Grow resistant varieties and destroy volunteer cereals after harvest. If needed, use a triazole or strobilurin fungicide registered for cereals, timed to protect the flag leaf.",
+          "satellite": null
+        },
+        {
+          "id": "durum-cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": "White-striped upper leaves can lower NDVI in strips or patches in late May, often stronger near field edges."
+        }
+      ],
+      "nutrients": {
+        "N": 130,
+        "P2O5": 60,
+        "K2O": 50,
+        "note": "Give a late nitrogen dose around ear emergence to raise protein and vitreous grain, which buyers pay for."
+      }
+    },
+    "Barley": {
+      "pests": [
+        {
+          "id": "net-blotch",
+          "name": "Net blotch",
+          "nameBg": "Мрежеста петнистост",
+          "latin": "Pyrenophora teres",
+          "type": "disease",
+          "months": [
+            3,
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Brown spots or stripes on leaves with a fine dark net pattern inside; leaves yellow and die early.",
+          "scout": "Check the upper three leaves from stem elongation to ear emergence, especially after rainy spells and in barley after barley.",
+          "action": "Do not grow barley after barley, bury infected stubble and use clean, treated seed and tolerant varieties. If it moves to the upper leaves in wet weather, use a fungicide registered for barley (e.g. triazole plus SDHI or strobilurin).",
+          "satellite": "Gradual NDVI drop from lower canopy in April-May."
+        },
+        {
+          "id": "barley-powdery-mildew",
+          "name": "Powdery mildew",
+          "nameBg": "Брашнеста мана",
+          "latin": "Blumeria graminis f. sp. hordei",
+          "type": "disease",
+          "months": [
+            3,
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "White to grey cotton-like spots on leaves and stems, mostly in dense, lush crops.",
+          "scout": "Check lower leaves in thick, high-nitrogen crops in mild humid weather in spring.",
+          "action": "Use resistant varieties, normal seed rates and moderate nitrogen. If it reaches the upper leaves early, use a fungicide registered for barley against mildew.",
+          "satellite": null
+        },
+        {
+          "id": "barley-leaf-stripe",
+          "name": "Barley leaf stripe",
+          "nameBg": "Ивичеста петнистост",
+          "latin": "Pyrenophora graminea",
+          "type": "disease",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Long yellow then brown stripes along the whole leaf; infected plants are stunted and ears often do not come out.",
+          "scout": "Look for single striped plants in April; the disease comes with the seed.",
+          "action": "Use certified seed treated with a registered fungicidal seed treatment; spraying in the field does not help.",
+          "satellite": null
+        },
+        {
+          "id": "barley-aphids-bydv",
+          "name": "Aphids and barley yellow dwarf virus",
+          "nameBg": "Житни листни въшки",
+          "latin": "Rhopalosiphum padi, Sitobion avenae",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            10,
+            11
+          ],
+          "risk": {
+            "tMinC": 16,
+            "tMaxC": 30,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Green or brown aphid colonies on the ears and flag leaf, sticky honeydew and black sooty mould. Autumn aphids spread barley yellow dwarf virus: patches of yellow or reddish, stunted plants in spring.",
+          "scout": "In autumn check 50 plants at the 1-3 leaf stage in warm weather. In late May check 50 ears; a common threshold is about 5 aphids per ear before the milky-ripe stage.",
+          "action": "Avoid very early autumn sowing and control volunteer cereals that act as a 'green bridge'. Ladybirds, hoverflies and parasitic wasps often control spring aphids. Spray only above threshold, with an insecticide registered for aphids on cereals, preferably one that spares beneficial insects.",
+          "satellite": "Virus patches show as round spots of lower NDVI in spring that do not recover after fertilizing."
+        },
+        {
+          "id": "barley-cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": "White-striped upper leaves can lower NDVI in strips or patches in late May, often stronger near field edges."
+        }
+      ],
+      "nutrients": {
+        "N": 110,
+        "P2O5": 60,
+        "K2O": 60,
+        "note": "Too much nitrogen causes lodging and high protein (bad for malting); split it between late winter and early stem elongation."
+      }
+    },
+    "Triticale": {
+      "pests": [
+        {
+          "id": "triticale-yellow-rust",
+          "name": "Yellow (stripe) rust",
+          "nameBg": "Жълта ръжда",
+          "latin": "Puccinia striiformis",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 8,
+            "tMaxC": 23,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Yellow-orange powdery pustules in long stripes along the leaf veins; affected leaves dry out early and the grain stays small. Newer rust races also attack triticale.",
+          "scout": "From tillering, walk the field weekly in April-May looking for first 'hot spots'. Act at the first stripes on susceptible varieties, especially in cool, damp springs.",
+          "action": "Choose resistant varieties (the most effective measure), avoid very early sowing and too much nitrogen, and destroy volunteer cereals. If it appears on upper leaves, use a triazole or strobilurin fungicide registered for cereals; protecting the flag leaf matters most.",
+          "satellite": "Round foci of lower NDVI in April-May that grow quickly over 1-2 weeks."
+        },
+        {
+          "id": "triticale-powdery-mildew",
+          "name": "Powdery mildew",
+          "nameBg": "Брашнеста мана",
+          "latin": "Blumeria graminis",
+          "type": "disease",
+          "months": [
+            3,
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "White to grey powdery spots on leaves and stems, mostly in dense crops.",
+          "scout": "Check lower leaves in thick crops during mild humid weather in spring.",
+          "action": "Use resistant varieties and avoid excess nitrogen. If it spreads to upper leaves, use a fungicide registered for triticale.",
+          "satellite": null
+        },
+        {
+          "id": "triticale-cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": "White-striped upper leaves can lower NDVI in strips or patches in late May, often stronger near field edges."
+        },
+        {
+          "id": "triticale-fusarium-head-blight",
+          "name": "Fusarium head blight",
+          "nameBg": "Фузариоза по класа",
+          "latin": "Fusarium graminearum, F. culmorum",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Some spikelets on green ears turn white early, often with pink-orange mould at the base; grains are shrivelled, chalky and can contain mycotoxins (DON).",
+          "scout": "Watch the forecast at flowering (usually mid-May): rain and warm weather (over about 18°C) during flowering means high risk, especially after corn.",
+          "action": "Avoid sowing after corn or plough in corn stubble, and choose less susceptible varieties. If rain is forecast at flowering, apply a triazole fungicide registered for ear diseases at early to mid flowering. Harvest and dry grain promptly.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 110,
+        "P2O5": 50,
+        "K2O": 50,
+        "note": "Triticale uses soil nutrients well on poorer soils; split nitrogen in late winter and at stem elongation."
+      }
+    },
+    "Oats": {
+      "pests": [
+        {
+          "id": "crown-rust",
+          "name": "Crown rust",
+          "nameBg": "Коронеста ръжда",
+          "latin": "Puccinia coronata",
+          "type": "disease",
+          "months": [
+            5,
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": 30,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Bright orange pustules scattered on the leaves in early summer; leaves dry early and grain is light.",
+          "scout": "Check upper leaves weekly from heading in warm, humid weather.",
+          "action": "Grow resistant varieties, sow early in spring and remove buckthorn bushes near fields if present. If needed, use a fungicide registered for oats.",
+          "satellite": null
+        },
+        {
+          "id": "frit-fly",
+          "name": "Frit fly",
+          "nameBg": "Шведска муха",
+          "latin": "Oscinella frit",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Larvae bore into young shoots so the central leaf turns yellow and dies ('dead heart'); later larvae damage the young grain.",
+          "scout": "Check 2-4 leaf plants for dead central leaves in April-May.",
+          "action": "Sow spring oats early so plants are past the sensitive stage when flies are active. Chemical control is rarely worth it.",
+          "satellite": null
+        },
+        {
+          "id": "oats-aphids-bydv",
+          "name": "Aphids and barley yellow dwarf virus",
+          "nameBg": "Житни листни въшки",
+          "latin": "Rhopalosiphum padi, Sitobion avenae",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 16,
+            "tMaxC": 30,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Aphid colonies on leaves; oats are very sensitive to yellow dwarf virus, which turns leaves red-purple and stunts plants in patches.",
+          "scout": "Check 50 plants weekly from emergence to heading.",
+          "action": "Avoid very early autumn sowing and control volunteer cereals that act as a 'green bridge'. Ladybirds, hoverflies and parasitic wasps often control spring aphids. Spray only above threshold, with an insecticide registered for aphids on cereals, preferably one that spares beneficial insects.",
+          "satellite": "Virus patches show as round spots of lower NDVI in spring that do not recover after fertilizing."
+        },
+        {
+          "id": "oats-cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted. Oats are a favourite host.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": "White-striped upper leaves can lower NDVI in strips or patches in late May, often stronger near field edges."
+        }
+      ],
+      "nutrients": {
+        "N": 80,
+        "P2O5": 40,
+        "K2O": 50,
+        "note": "Oats lodge easily: give moderate nitrogen at sowing and avoid fields with a lot of residual N."
+      }
+    },
+    "Rye": {
+      "pests": [
+        {
+          "id": "ergot",
+          "name": "Ergot",
+          "nameBg": "Мораво рогче",
+          "latin": "Claviceps purpurea",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Hard dark purple-black horns grow instead of some grains in the ear; they are poisonous to people and animals.",
+          "scout": "Check ears before harvest; risk is higher with long, wet flowering and grass weeds (blackgrass, wild grasses) at field edges.",
+          "action": "Use clean certified seed, deep ploughing to bury ergot bodies, rotation, and mow grass on field edges before they flower. Clean the harvested grain; there is no effective spray.",
+          "satellite": null
+        },
+        {
+          "id": "rye-brown-rust",
+          "name": "Brown rust of rye",
+          "nameBg": "Кафява ръжда",
+          "latin": "Puccinia recondita",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 30,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Orange-brown pustules scattered over the leaves in May-June.",
+          "scout": "At ear emergence check the flag leaf and the leaf below on 20 plants. Act if pustules are spreading on these leaves before milky ripeness.",
+          "action": "Grow resistant varieties and destroy volunteer cereals after harvest. If needed, use a triazole or strobilurin fungicide registered for cereals, timed to protect the flag leaf.",
+          "satellite": null
+        },
+        {
+          "id": "snow-mould",
+          "name": "Snow mould",
+          "nameBg": "Снежна плесен",
+          "latin": "Microdochium nivale",
+          "type": "disease",
+          "months": [
+            1,
+            2,
+            3
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": 5,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "After long snow cover, patches of dead, grey-pink, matted plants appear in early spring.",
+          "scout": "Walk the field right after the snow melts.",
+          "action": "Avoid very early sowing and too much autumn nitrogen; use fungicide-treated seed. Damaged patches usually recover if roots survive.",
+          "satellite": "Irregular patches of low NDVI right after snowmelt."
+        },
+        {
+          "id": "rye-cereal-leaf-beetle",
+          "name": "Cereal leaf beetle",
+          "nameBg": "Житна пиявица",
+          "latin": "Oulema melanopus",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 14,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Small slug-like larvae covered in black slime scrape long white strips between the veins of the upper leaves; heavily hit fields look frosted.",
+          "scout": "From early May check 10 groups of 10 stems across the field. Act when there is about 1 larva per flag leaf (0.5 per stem for spring crops) while larvae are still small.",
+          "action": "A parasitic wasp (Tetrastichus julis) often keeps it below damaging levels, so do not spray just because adults are present. If the threshold is reached, use a pyrethroid or other insecticide registered for cereals against young larvae.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 80,
+        "P2O5": 40,
+        "K2O": 50,
+        "note": "Rye needs less than wheat; too much nitrogen causes lodging."
+      }
+    },
+    "Rapeseed": {
+      "pests": [
+        {
+          "id": "pollen-beetle",
+          "name": "Pollen beetle",
+          "nameBg": "Рапичен цветояд",
+          "latin": "Brassicogethes aeneus (Meligethes aeneus)",
+          "type": "insect",
+          "months": [
+            3,
+            4
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Small shiny black beetles chew into closed flower buds, which dry out and drop, leaving empty stalks without pods.",
+          "scout": "Check 25 plants from green bud stage in March-April on warm days (over about 12-15°C). Often used thresholds: about 1-3 beetles per plant at early green bud, more (3-5) when buds start to yellow. Once flowers open, the beetles feed on pollen and are no longer harmful.",
+          "action": "Grow a well-established, even crop, which compensates better. Many populations are resistant to pyrethroids, so if the threshold is exceeded use an insecticide from another class registered for rapeseed, sprayed before flowering.",
+          "satellite": "Severe bud loss shows as patchy, slower NDVI/yellow-flowering development in April."
+        },
+        {
+          "id": "cabbage-stem-flea-beetle",
+          "name": "Cabbage stem flea beetle",
+          "nameBg": "Земни бълхи",
+          "latin": "Psylliodes chrysocephala",
+          "type": "insect",
+          "months": [
+            9,
+            10,
+            11,
+            3
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "In autumn adults make small round 'shot holes' in cotyledons and first leaves; larvae later tunnel in leaf stalks and stems, weakening plants over winter.",
+          "scout": "Check emerging seedlings daily in warm dry autumn spells. Common thresholds: about 25% leaf area eaten at the 1-3 leaf stage, or about 2-5 larvae per plant in late autumn.",
+          "action": "Sow on time into moist soil so plants grow fast through the sensitive stage; larger plants tolerate damage. Spray only above threshold with an insecticide registered for rapeseed; resistance to pyrethroids is reported in parts of Europe.",
+          "satellite": "Failed or thin establishment in autumn shows as low NDVI patches in October-November."
+        },
+        {
+          "id": "rape-stem-weevils",
+          "name": "Rape stem weevils",
+          "nameBg": "Стъблени хоботници",
+          "latin": "Ceutorhynchus napi, C. pallidactylus",
+          "type": "insect",
+          "months": [
+            2,
+            3,
+            4
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small grey weevils lay eggs in stems in early spring; stems twist, crack open and larvae tunnel inside.",
+          "scout": "Use yellow water traps from February; first catches after a few days over about 10-12°C signal migration into the crop.",
+          "action": "Insecticide (registered for rapeseed) is usually applied about 7-10 days after the first big catches, before egg laying.",
+          "satellite": null
+        },
+        {
+          "id": "rapeseed-sclerotinia",
+          "name": "Sclerotinia stem rot",
+          "nameBg": "Бяло гниене",
+          "latin": "Sclerotinia sclerotiorum",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Bleached, grey-white lesions on stems after flowering; stems break and pods ripen early. Black hard bodies (sclerotia) form inside stems.",
+          "scout": "Risk is high when there are several rainy days at full flowering; check stems from late flowering.",
+          "action": "Keep at least 3-4 years between rapeseed, sunflower, soybean and other host crops. In wet flowering weather, use a fungicide registered for rapeseed at early to full flowering (prevention only).",
+          "satellite": "Patches of early ripening and lodging show as earlier NDVI drop in late May-June."
+        },
+        {
+          "id": "phoma-stem-canker",
+          "name": "Phoma leaf spot and stem canker",
+          "nameBg": "Фомоза",
+          "latin": "Leptosphaeria maculans",
+          "type": "disease",
+          "months": [
+            10,
+            11,
+            3,
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 8,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Pale round leaf spots with tiny black dots in autumn; later dark cankers at the stem base cause plants to lodge.",
+          "scout": "Check 25 plants in autumn after rainy periods; act if about 10-20% of plants have leaf spots.",
+          "action": "Choose varieties with good resistance, bury stubble and keep rotation. If needed, use a fungicide registered for rapeseed in autumn.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 170,
+        "P2O5": 70,
+        "K2O": 80,
+        "note": "Rapeseed also needs about 30-40 kg/ha sulphur and some boron; split nitrogen at the end of winter and early stem extension."
+      }
+    },
+    "Sunflower": {
+      "pests": [
+        {
+          "id": "broomrape",
+          "name": "Sunflower broomrape",
+          "nameBg": "Синя китка",
+          "latin": "Orobanche cumana",
+          "type": "parasitic-plant",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Leafless pale-purple flowering shoots come up around the base of sunflower plants in summer; infested plants are weak and heads are small.",
+          "scout": "Check the base of plants from late June, especially in fields where broomrape was seen before; seeds stay alive in soil for 10+ years.",
+          "action": "Grow at least 5-6 years between sunflowers and use hybrids resistant to the local races. Herbicide-tolerant hybrids with an imidazolinone or sulfonylurea herbicide registered for that system also control it.",
+          "satellite": "Infested areas grow more slowly, giving patches of lower NDVI in July."
+        },
+        {
+          "id": "sunflower-downy-mildew",
+          "name": "Sunflower downy mildew",
+          "nameBg": "Мана",
+          "latin": "Plasmopara halstedii",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Young plants are stunted with pale yellow areas along the veins and white downy growth under leaves; they rarely produce a head.",
+          "scout": "Check seedlings 2-4 weeks after emergence, especially after heavy rain soon after sowing.",
+          "action": "Use resistant hybrids and seed treated with a registered fungicide, keep 4-5 years between sunflowers and control volunteer sunflowers.",
+          "satellite": null
+        },
+        {
+          "id": "phomopsis",
+          "name": "Phomopsis stem canker",
+          "nameBg": "Фомопсис",
+          "latin": "Diaporthe helianthi",
+          "type": "disease",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Brown-grey spots on stems around leaf stalks spread around the stem; the inside goes soft and stems break.",
+          "scout": "Check stems from flower bud stage after warm rainy periods.",
+          "action": "Use tolerant hybrids, keep 4+ years between sunflowers and plough residue. In high-risk years use a fungicide registered for sunflower at bud stage.",
+          "satellite": "Lodging and early drying patches give an early NDVI drop in August."
+        },
+        {
+          "id": "sunflower-moth",
+          "name": "Sunflower moth",
+          "nameBg": "Слънчогледов молец",
+          "latin": "Homoeosoma nebulella",
+          "type": "insect",
+          "months": [
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 20,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars feed in the head and seeds, leaving webs and droppings; damaged heads can rot.",
+          "scout": "Use pheromone traps from the start of flowering; check heads during flowering.",
+          "action": "Most modern hybrids have an armoured seed layer; sowing all fields in an area at the same time shortens the risk period. Spray only on strong outbreaks with an insecticide registered for sunflower.",
+          "satellite": null
+        },
+        {
+          "id": "sunflower-sclerotinia",
+          "name": "Sclerotinia (white rot)",
+          "nameBg": "Бяло гниене",
+          "latin": "Sclerotinia sclerotiorum",
+          "type": "disease",
+          "months": [
+            6,
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Plants wilt suddenly, the stem base or head turns soft and bleached with white mould and black hard bodies.",
+          "scout": "Check after rainy spells around flowering and in late summer.",
+          "action": "Keep 4-5 years between sunflower, rapeseed, soybean and other hosts; use tolerant hybrids. No spray is very reliable.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 80,
+        "P2O5": 70,
+        "K2O": 60,
+        "note": "Sunflower needs boron (spray if soil test is low) and moderate nitrogen; too much N increases disease and lodging."
+      }
+    },
+    "Corn": {
+      "pests": [
+        {
+          "id": "western-corn-rootworm",
+          "name": "Western corn rootworm",
+          "nameBg": "Западен царевичен коренов червей",
+          "latin": "Diabrotica virgifera virgifera",
+          "type": "insect",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Larvae eat the roots in June-July so plants lean over and bend into a 'goose neck'; adults chew silks in July-August.",
+          "scout": "Count adults on yellow sticky traps or plants in July-August; many adults in corn-after-corn means root damage next year.",
+          "action": "Crop rotation is the best control: larvae only survive on corn roots, so do not grow corn after corn. Soil insecticide or treated seed is only needed in continuous corn.",
+          "satellite": "Lodged patches after storms show as sudden NDVI drops in July."
+        },
+        {
+          "id": "european-corn-borer",
+          "name": "European corn borer",
+          "nameBg": "Царевичен стъблен пробивач",
+          "latin": "Ostrinia nubilalis",
+          "type": "insect",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars tunnel in stems and cobs; tassels and stems break and fungi enter.",
+          "scout": "Use light or pheromone traps for moth flight in June-July; check for egg masses under leaves.",
+          "action": "Chop and plough stalks after harvest. Trichogramma wasps can be released at egg laying. Spray (insecticide registered for corn) only when caterpillars hatch, before they enter the stem.",
+          "satellite": null
+        },
+        {
+          "id": "cotton-bollworm",
+          "name": "Cotton bollworm",
+          "nameBg": "Памукова нощенка",
+          "latin": "Helicoverpa armigera",
+          "type": "insect",
+          "months": [
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": 22,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Green to brown caterpillars eat the tip of the cob and the grain; fungi and mycotoxins follow.",
+          "scout": "Use pheromone traps from June; check cobs at silking, especially in hot, dry summers.",
+          "action": "Deep autumn tillage kills pupae in the soil. If many young caterpillars are found at silking, use an insecticide registered for corn.",
+          "satellite": null
+        },
+        {
+          "id": "grey-corn-weevil",
+          "name": "Grey corn weevil",
+          "nameBg": "Сив царевичен хоботник",
+          "latin": "Tanymecus dilaticollis",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Grey weevils chew emerging corn seedlings from the leaf edges; in dry springs whole fields can need re-sowing.",
+          "scout": "Check fields daily during emergence on warm, dry days; damage of more than a few weevils per m² at emergence is serious.",
+          "action": "Rotation and sowing into warm soil for fast emergence help. Use seed treated with a registered insecticide where the weevil is common (Dobrudzha, north-east).",
+          "satellite": "Gaps in emergence show as patchy low NDVI in May."
+        },
+        {
+          "id": "wireworms",
+          "name": "Wireworms",
+          "nameBg": "Телени червеи",
+          "latin": "Agriotes spp.",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Hard yellow larvae bore into seeds and young stems; plants wilt and stands are thin.",
+          "scout": "Before sowing, use bait traps (e.g. buried grain) in fields after grass or alfalfa.",
+          "action": "Avoid sowing right after grassland, use rotation and soil cultivation. Where many are found, use seed or soil treatment registered for corn.",
+          "satellite": null
+        },
+        {
+          "id": "johnson-grass",
+          "name": "Johnson grass",
+          "nameBg": "Балур",
+          "latin": "Sorghum halepense",
+          "type": "weed",
+          "months": [
+            5,
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Tall grass weed from thick underground rhizomes grows in patches and competes strongly with corn and sunflower.",
+          "scout": "Map patches in summer; they spread with cultivation equipment.",
+          "action": "Do not chop rhizomes and spread them; use rotation with dense winter cereals. Use a grass herbicide registered for the crop when plants are 20-30 cm.",
+          "satellite": "Weed patches stay green in late summer after the crop dries."
+        }
+      ],
+      "nutrients": {
+        "N": 180,
+        "P2O5": 80,
+        "K2O": 80,
+        "note": "Corn often needs zinc on carbonate chernozems; apply most nitrogen before sowing and as a side-dress before 6-8 leaves."
+      }
+    },
+    "Sorghum": {
+      "pests": [
+        {
+          "id": "sorghum-cotton-bollworm",
+          "name": "Cotton bollworm",
+          "nameBg": "Памукова нощенка",
+          "latin": "Helicoverpa armigera",
+          "type": "insect",
+          "months": [
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": 22,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars feed on the grain in the panicle.",
+          "scout": "Shake 10 panicles into a bucket at flowering and grain filling.",
+          "action": "Deep autumn tillage kills pupae. Spray only if many young caterpillars are present, with an insecticide registered for sorghum.",
+          "satellite": null
+        },
+        {
+          "id": "sorghum-corn-borer",
+          "name": "European corn borer",
+          "nameBg": "Царевичен стъблен пробивач",
+          "latin": "Ostrinia nubilalis",
+          "type": "insect",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars tunnel in stems and panicle stalks, which break.",
+          "scout": "Watch moth flight with traps in June-July.",
+          "action": "Chop and plough stalks after harvest; chemical control rarely pays.",
+          "satellite": null
+        },
+        {
+          "id": "sorghum-aphids",
+          "name": "Corn leaf aphid",
+          "nameBg": "Царевична листна въшка",
+          "latin": "Rhopalosiphum maidis",
+          "type": "insect",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 20,
+            "tMaxC": 32,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Blue-green aphid colonies in the whorl and panicle, with sticky honeydew.",
+          "scout": "Check whorls and panicles in hot dry spells.",
+          "action": "Natural enemies usually control them; spray only if panicles are covered.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 110,
+        "P2O5": 50,
+        "K2O": 60,
+        "note": "Sorghum takes up residual nitrogen well; give N before sowing and a small side-dress."
+      }
+    },
+    "Millet": {
+      "pests": [
+        {
+          "id": "millet-smut",
+          "name": "Millet head smut",
+          "nameBg": null,
+          "latin": "Sporisorium destruens",
+          "type": "disease",
+          "months": [
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "The panicle is replaced by a mass of black powdery spores.",
+          "scout": "Count smutted heads at heading.",
+          "action": "Use clean, fungicide-treated seed and rotation; there is no field spray.",
+          "satellite": null
+        },
+        {
+          "id": "millet-corn-borer",
+          "name": "European corn borer",
+          "nameBg": "Царевичен стъблен пробивач",
+          "latin": "Ostrinia nubilalis",
+          "type": "insect",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Caterpillars tunnel in stems which break before harvest.",
+          "scout": "Watch moth flight with traps.",
+          "action": "Avoid sowing next to last year's corn stubble; plough stalks.",
+          "satellite": null
+        },
+        {
+          "id": "millet-frit-fly",
+          "name": "Frit fly",
+          "nameBg": "Шведска муха",
+          "latin": "Oscinella frit",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Central leaf of young plants turns yellow and dies.",
+          "scout": "Check young plants in May-June.",
+          "action": "Timely sowing and good establishment; chemical control rarely needed.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 70,
+        "P2O5": 40,
+        "K2O": 40,
+        "note": "Millet needs little fertilizer; too much nitrogen causes lodging."
+      }
+    },
+    "Soybean": {
+      "pests": [
+        {
+          "id": "spider-mites",
+          "name": "Two-spotted spider mite",
+          "nameBg": "Обикновен паяжинообразуващ акар",
+          "latin": "Tetranychus urticae",
+          "type": "mite",
+          "months": [
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 25,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Tiny mites under leaves cause fine yellow speckling; leaves turn bronze, get fine webbing and drop, starting at field edges.",
+          "scout": "Check leaf undersides with a hand lens during hot, dry spells in July-August, starting at edges and dusty roads.",
+          "action": "Irrigation and rain reduce outbreaks; broad insecticide sprays kill the predatory mites and make it worse. If needed, use an acaricide registered for soybean, mainly on edges.",
+          "satellite": "Bronzing spreads from field edges inward, giving an NDVI drop from the edge in hot dry weather."
+        },
+        {
+          "id": "soybean-cotton-bollworm",
+          "name": "Cotton bollworm",
+          "nameBg": "Памукова нощенка",
+          "latin": "Helicoverpa armigera",
+          "type": "insect",
+          "months": [
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 22,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars eat leaves, flowers and pods.",
+          "scout": "Use pheromone traps and beat sheets in July-August.",
+          "action": "Spray only if pods are being damaged, with an insecticide registered for soybean.",
+          "satellite": null
+        },
+        {
+          "id": "soybean-downy-mildew",
+          "name": "Soybean downy mildew",
+          "nameBg": "Мана по соята",
+          "latin": "Peronospora manshurica",
+          "type": "disease",
+          "months": [
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 1,
+          "signs": "Pale yellow spots on upper leaf surface with grey down underneath; seed can be covered with a white crust.",
+          "scout": "Check leaves after wet periods in June-July.",
+          "action": "Use clean, treated seed and tolerant varieties; usually no spray needed.",
+          "satellite": null
+        },
+        {
+          "id": "soybean-white-mould",
+          "name": "White mould",
+          "nameBg": "Бяло гниене",
+          "latin": "Sclerotinia sclerotiorum",
+          "type": "disease",
+          "months": [
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Wilting plants with white fluffy mould and black hard bodies on stems after flowering.",
+          "scout": "Check in wet weather during flowering, especially in irrigated fields.",
+          "action": "Keep 4 years from sunflower and rapeseed; avoid very dense stands.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 20,
+        "P2O5": 60,
+        "K2O": 60,
+        "note": "Inoculate seed with Bradyrhizobium if no soybean was grown before; only a small starter nitrogen dose."
+      }
+    },
+    "Peas": {
+      "pests": [
+        {
+          "id": "pea-weevil",
+          "name": "Pea weevil",
+          "nameBg": "Грахов зърнояд",
+          "latin": "Bruchus pisorum",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Adults lay eggs on young pods; larvae develop inside the seeds, leaving round exit holes and making the grain unsuitable for food or seed.",
+          "scout": "Use a sweep net at the edges from first flowering, especially on warm days above about 20°C.",
+          "action": "Sow early so pods form before warm weather, harvest on time and use clean seed. If adults are found at early pod set, use an insecticide registered for peas before eggs hatch.",
+          "satellite": null
+        },
+        {
+          "id": "pea-aphid",
+          "name": "Pea aphid",
+          "nameBg": "Грахова листна въшка",
+          "latin": "Acyrthosiphon pisum",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Large green aphids on growing tips and flowers; plants are stunted and pods poorly filled; spreads viruses.",
+          "scout": "Check 20 plant tips from flower bud stage; act if about 20-30% of plants are infested at early flowering.",
+          "action": "Natural enemies often control them. Spray only above threshold with an insecticide registered for peas.",
+          "satellite": null
+        },
+        {
+          "id": "pea-leaf-weevil",
+          "name": "Pea and bean weevil",
+          "nameBg": "Листни хоботници",
+          "latin": "Sitona lineatus",
+          "type": "insect",
+          "months": [
+            3,
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "U-shaped notches on leaf edges of young plants; larvae eat root nodules.",
+          "scout": "Check seedlings at 2-6 leaves in warm dry springs.",
+          "action": "Early sowing and fast growth; spray only if seedlings are heavily notched.",
+          "satellite": null
+        },
+        {
+          "id": "pea-ascochyta",
+          "name": "Ascochyta blight",
+          "nameBg": "Аскохитоза",
+          "latin": "Peyronellaea pinodes (Ascochyta spp.)",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Brown-purple spots on leaves, stems and pods; stems blacken at the base.",
+          "scout": "Check after rainy spells from flowering.",
+          "action": "Use clean seed, 4-5 years between peas, bury residue; fungicide registered for peas in wet years.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 20,
+        "P2O5": 60,
+        "K2O": 60,
+        "note": "Peas fix their own nitrogen; give only a small starter and P and K by soil test."
+      }
+    },
+    "Chickpea": {
+      "pests": [
+        {
+          "id": "chickpea-ascochyta",
+          "name": "Ascochyta blight",
+          "nameBg": "Аскохитоза",
+          "latin": "Ascochyta rabiei",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 3,
+          "signs": "Brown spots with dark rings on leaves, stems and pods; stems break and plants die in patches.",
+          "scout": "Check after rainy spells from early growth; the disease spreads quickly in wet weather.",
+          "action": "Use clean treated seed and tolerant varieties, keep 4 years between chickpeas. In wet years use a fungicide registered for chickpea at first signs.",
+          "satellite": "Expanding patches of dying plants give spots of low NDVI in May-June."
+        },
+        {
+          "id": "chickpea-pod-borer",
+          "name": "Cotton bollworm",
+          "nameBg": "Памукова нощенка",
+          "latin": "Helicoverpa armigera",
+          "type": "insect",
+          "months": [
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 22,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Caterpillars bore into pods and eat the seeds.",
+          "scout": "Use pheromone traps and check pods from flowering.",
+          "action": "Spray only if young caterpillars are found in pods, with an insecticide registered for chickpea.",
+          "satellite": null
+        },
+        {
+          "id": "chickpea-leaf-miner",
+          "name": "Chickpea leaf miner",
+          "nameBg": null,
+          "latin": "Liriomyza cicerina",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Winding white tunnels in leaflets; leaves dry and fall.",
+          "scout": "Check leaflets in May-June.",
+          "action": "Usually tolerated; parasitic wasps reduce numbers.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 15,
+        "P2O5": 50,
+        "K2O": 40,
+        "note": "Inoculate seed with chickpea-specific rhizobia if chickpea is new to the field."
+      }
+    },
+    "Lentil": {
+      "pests": [
+        {
+          "id": "lentil-weevil",
+          "name": "Lentil weevil",
+          "nameBg": "Лещен зърнояд",
+          "latin": "Bruchus lentis",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Larvae develop inside lentil seeds, leaving holes and lowering food quality.",
+          "scout": "Check flowering crops with a sweep net on warm days.",
+          "action": "Use clean seed, harvest on time and cool or fumigate stored grain properly; spray at early pod set only if adults are many.",
+          "satellite": null
+        },
+        {
+          "id": "lentil-ascochyta",
+          "name": "Ascochyta blight",
+          "nameBg": "Аскохитоза",
+          "latin": "Ascochyta lentis",
+          "type": "disease",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Tan spots with dark edges on leaves, stems and pods; seed can be discoloured.",
+          "scout": "Check after rainy periods.",
+          "action": "Use clean seed, rotation and tolerant varieties; fungicide registered for lentil in wet years.",
+          "satellite": null
+        },
+        {
+          "id": "lentil-aphids",
+          "name": "Pea aphid",
+          "nameBg": "Грахова листна въшка",
+          "latin": "Acyrthosiphon pisum",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Green aphids on tips, sticky leaves, spread of viruses.",
+          "scout": "Check tips from flower bud stage.",
+          "action": "Spray only on heavy infestations with an insecticide registered for lentil.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 15,
+        "P2O5": 50,
+        "K2O": 40,
+        "note": "Lentils compete poorly with weeds; a clean seedbed matters more than fertilizer."
+      }
+    },
+    "Field beans": {
+      "pests": [
+        {
+          "id": "black-bean-aphid",
+          "name": "Black bean aphid",
+          "nameBg": "Черна бобова листна въшка",
+          "latin": "Aphis fabae",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Dense black colonies on growing tips and stems; plants are stunted and pods fewer.",
+          "scout": "Check 20 plant tips from early flowering; act if about 10% of plants have colonies.",
+          "action": "Natural enemies help; pinch or spray only colonised edges. Use an insecticide registered for field beans if needed.",
+          "satellite": null
+        },
+        {
+          "id": "bean-seed-beetle",
+          "name": "Bean seed beetle",
+          "nameBg": null,
+          "latin": "Bruchus rufimanus",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Round holes in seeds where adults came out; lowers value for food and seed.",
+          "scout": "Check flowering crops on warm days above about 20°C.",
+          "action": "Harvest on time and use clean seed; spray at early pod set only for food-quality crops.",
+          "satellite": null
+        },
+        {
+          "id": "chocolate-spot",
+          "name": "Chocolate spot",
+          "nameBg": null,
+          "latin": "Botrytis fabae",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Small chocolate-brown spots on leaves that join into large dead areas in wet weather.",
+          "scout": "Check after several rainy days in spring.",
+          "action": "Avoid dense crops; fungicide registered for field beans in wet periods.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 20,
+        "P2O5": 60,
+        "K2O": 80,
+        "note": "No nitrogen needed beyond a small starter; beans need good potassium."
+      }
+    },
+    "Vetch": {
+      "pests": [
+        {
+          "id": "vetch-seed-beetle",
+          "name": "Vetch seed beetle",
+          "nameBg": null,
+          "latin": "Bruchus brachialis",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Larvae develop inside seeds; a problem only for seed production.",
+          "scout": "Check flowering seed crops with a sweep net.",
+          "action": "Harvest seed crops on time and treat stored seed; spray only in seed crops.",
+          "satellite": null
+        },
+        {
+          "id": "vetch-aphids",
+          "name": "Vetch aphid",
+          "nameBg": null,
+          "latin": "Megoura viciae",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Green aphids on growing tips; plants are stunted.",
+          "scout": "Check tips in warm dry spring weather.",
+          "action": "Usually tolerated, especially when cut for forage.",
+          "satellite": null
+        },
+        {
+          "id": "vetch-downy-mildew",
+          "name": "Downy mildew",
+          "nameBg": "Мана",
+          "latin": "Peronospora viciae",
+          "type": "disease",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": 22,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 1,
+          "signs": "Pale spots on top of leaves with grey down underneath.",
+          "scout": "Check after cool wet spells.",
+          "action": "Rotation and clean seed; spraying rarely pays.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 20,
+        "P2O5": 50,
+        "K2O": 50,
+        "note": "Vetch fixes nitrogen; give P and K by soil test and inoculate seed if vetch is new."
+      }
+    },
+    "Alfalfa": {
+      "pests": [
+        {
+          "id": "alfalfa-weevil",
+          "name": "Alfalfa weevil",
+          "nameBg": "Люцернов листен хоботник",
+          "latin": "Hypera postica",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small green larvae with dark heads eat growing tips and skeletonize leaves; the field looks grey-white before first cut.",
+          "scout": "From April use a sweep net; act if about 20-30 larvae per 10 sweeps or 30-40% of tips are damaged before first cut.",
+          "action": "If the crop is near cutting stage, cut early instead of spraying. Otherwise use an insecticide registered for alfalfa, never during flowering because of bees.",
+          "satellite": "Whitish, eaten canopy gives an NDVI drop in late April-May before the first cut."
+        },
+        {
+          "id": "dodder",
+          "name": "Dodder",
+          "nameBg": "Кускута",
+          "latin": "Cuscuta spp.",
+          "type": "parasitic-plant",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Yellow-orange thread-like stems wrap around alfalfa in growing round patches; the alfalfa underneath weakens and dies.",
+          "scout": "Walk fields after each cut and mark patches.",
+          "action": "Use certified dodder-free seed. Mow patches very low or burn them before dodder sets seed; a herbicide registered for dodder in alfalfa may be used on small patches.",
+          "satellite": "Circular patches with lower NDVI that grow outward between cuts."
+        },
+        {
+          "id": "common-vole",
+          "name": "Common vole",
+          "nameBg": "Полевка",
+          "latin": "Microtus arvalis",
+          "type": "rodent",
+          "months": [
+            3,
+            4,
+            9,
+            10,
+            11
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Many small holes connected by runways; patches of eaten, dying plants. Old alfalfa is a breeding site for voles that move into nearby cereals.",
+          "scout": "Count active holes in spring and autumn (close holes and check reopened ones after 24 hours).",
+          "action": "Deep ploughing of old alfalfa, perches for birds of prey and keeping field edges mown. Use only rodenticides registered by BFSA, placed in holes, following the label.",
+          "satellite": "Spotty small bare patches in otherwise green fields, most visible in early spring."
+        },
+        {
+          "id": "alfalfa-aphids",
+          "name": "Pea aphid",
+          "nameBg": "Грахова листна въшка",
+          "latin": "Acyrthosiphon pisum",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": 28,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Green aphids on tips, sticky leaves, slower regrowth.",
+          "scout": "Check stems with a sweep net in spring.",
+          "action": "Ladybirds usually control them; cutting removes most aphids.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 20,
+        "P2O5": 80,
+        "K2O": 120,
+        "note": "Alfalfa needs a neutral pH (lime acid soils), plenty of potassium and boron; nitrogen only as a small starter."
+      }
+    },
+    "Coriander": {
+      "pests": [
+        {
+          "id": "coriander-bacterial-blight",
+          "name": "Bacterial blight",
+          "nameBg": "Бактериоза",
+          "latin": "Pseudomonas syringae pv. coriandricola",
+          "type": "disease",
+          "months": [
+            5,
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Water-soaked dark spots on leaves and stems, flower heads turn brown and seeds stay small.",
+          "scout": "Check after rainy spells, especially around flowering.",
+          "action": "The bacteria come with the seed, so use clean or treated seed and rotate at least 3-4 years. There is no curative spray.",
+          "satellite": null
+        },
+        {
+          "id": "coriander-powdery-mildew",
+          "name": "Powdery mildew",
+          "nameBg": "Брашнеста мана",
+          "latin": "Erysiphe heraclei",
+          "type": "disease",
+          "months": [
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "White powdery coating on leaves and umbels during flowering; seed set falls.",
+          "scout": "Check umbels from flowering in warm weather with dewy nights.",
+          "action": "Avoid dense sowing and excess nitrogen; use a fungicide registered for coriander if it starts early.",
+          "satellite": null
+        },
+        {
+          "id": "coriander-lygus-bugs",
+          "name": "Plant bugs",
+          "nameBg": "Ливадни дървеници",
+          "latin": "Lygus spp.",
+          "type": "insect",
+          "months": [
+            6,
+            7
+          ],
+          "risk": {
+            "tMinC": 18,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Bugs suck flowers and young seeds, causing empty or shrivelled seeds.",
+          "scout": "Use a sweep net during flowering.",
+          "action": "Spray only on heavy infestations, outside bee flight hours, with an insecticide registered for coriander.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 70,
+        "P2O5": 50,
+        "K2O": 50,
+        "note": "Coriander grows slowly at first: control weeds early and avoid too much nitrogen, which delays ripening."
+      }
+    },
+    "Buckwheat": {
+      "pests": [
+        {
+          "id": "buckwheat-weeds",
+          "name": "Broadleaf weeds",
+          "nameBg": "Бяла лобода, щир",
+          "latin": "Chenopodium album, Amaranthus retroflexus",
+          "type": "weed",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Fast-growing weeds overtake buckwheat in the first weeks.",
+          "scout": "Check 2-3 weeks after sowing.",
+          "action": "Prepare a clean seedbed and sow into warm soil so buckwheat closes the canopy fast; harrowing before emergence.",
+          "satellite": null
+        },
+        {
+          "id": "buckwheat-wireworms",
+          "name": "Wireworms",
+          "nameBg": "Телени червеи",
+          "latin": "Agriotes spp.",
+          "type": "insect",
+          "months": [
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Thin, uneven emergence with seedlings eaten below ground.",
+          "scout": "Use bait traps before sowing after grassland.",
+          "action": "Avoid sowing right after grass; good tillage.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 50,
+        "P2O5": 40,
+        "K2O": 60,
+        "note": "Buckwheat needs little nitrogen; too much causes lodging and fewer seeds."
+      }
+    },
+    "Sugar beet": {
+      "pests": [
+        {
+          "id": "beet-weevil",
+          "name": "Beet weevil",
+          "nameBg": "Цвеклов хоботник",
+          "latin": "Asproparthenis punctiventris (Bothynoderes punctiventris)",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Grey weevils eat emerging beet seedlings at soil level in warm dry springs; larvae later eat the roots.",
+          "scout": "Check emerging fields daily in April-May, especially near last year's beet fields; even a few weevils per m² at emergence can destroy the stand.",
+          "action": "Keep beet fields far from last year's beet, use insecticide-treated seed where registered and catch-trenches at field edges. Spray with an insecticide registered for beet if beetles invade at emergence.",
+          "satellite": "Bare gaps in the stand show as low NDVI patches in May."
+        },
+        {
+          "id": "cercospora",
+          "name": "Cercospora leaf spot",
+          "nameBg": "Церкоспороза",
+          "latin": "Cercospora beticola",
+          "type": "disease",
+          "months": [
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": 20,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 3,
+          "signs": "Many small round grey spots with red-brown borders; leaves die and the plant regrows new leaves, losing sugar.",
+          "scout": "Check 100 leaves weekly from July; act at the first spots (about 1-5% of leaves) in warm, humid weather.",
+          "action": "Grow tolerant varieties, keep 3-4 years between beets and bury leaves. Use fungicides registered for beet, alternating classes (e.g. triazole and strobilurin) to avoid resistance.",
+          "satellite": "Whole-field NDVI decline in August-September earlier than normal."
+        },
+        {
+          "id": "beet-flea-beetle",
+          "name": "Beet flea beetle",
+          "nameBg": "Цвеклова бълха",
+          "latin": "Chaetocnema tibialis",
+          "type": "insect",
+          "months": [
+            4,
+            5
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Small shiny beetles make tiny holes in cotyledons and first leaves of seedlings.",
+          "scout": "Check seedlings on warm dry days.",
+          "action": "Use treated seed; fast establishment; spray only on heavy attacks.",
+          "satellite": null
+        },
+        {
+          "id": "beet-powdery-mildew",
+          "name": "Powdery mildew",
+          "nameBg": "Брашнеста мана",
+          "latin": "Erysiphe betae",
+          "type": "disease",
+          "months": [
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": 20,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "White powder on older leaves in hot dry late summer.",
+          "scout": "Check older leaves from late July.",
+          "action": "Tolerant varieties; fungicide registered for beet at first signs.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 150,
+        "P2O5": 90,
+        "K2O": 180,
+        "note": "Beet needs boron (to avoid heart rot) and lots of potassium; stop nitrogen early or sugar content drops."
+      }
+    },
+    "Potatoes": {
+      "pests": [
+        {
+          "id": "colorado-potato-beetle",
+          "name": "Colorado potato beetle",
+          "nameBg": "Колорадски бръмбар",
+          "latin": "Leptinotarsa decemlineata",
+          "type": "insect",
+          "months": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 3,
+          "signs": "Yellow beetles with black stripes and red-orange larvae eat the leaves; whole fields can be stripped in hot weather.",
+          "scout": "Check 20 plants twice a week from emergence; act when young larvae appear on about 10% of plants.",
+          "action": "Rotate fields far from last year's potatoes. Target young larvae, and alternate insecticide classes registered for potato (the beetle quickly becomes resistant).",
+          "satellite": "Defoliated patches show as fast NDVI drops in June-July."
+        },
+        {
+          "id": "late-blight",
+          "name": "Late blight",
+          "nameBg": "Мана по картофите",
+          "latin": "Phytophthora infestans",
+          "type": "disease",
+          "months": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 10,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 3,
+          "signs": "Dark water-soaked spots on leaves with white mould underneath in wet weather; whole plants collapse within days and tubers rot.",
+          "scout": "Check daily in warm, wet weather (several rainy days or long leaf wetness); start preventive spraying before symptoms in high-risk periods.",
+          "action": "Plant healthy seed tubers and resistant varieties, destroy cull piles. Spray preventively with fungicides registered for potato, alternating modes of action.",
+          "satellite": "Rapid, spreading NDVI collapse within a week after wet weather."
+        },
+        {
+          "id": "early-blight",
+          "name": "Early blight",
+          "nameBg": "Алтернариоза",
+          "latin": "Alternaria solani",
+          "type": "disease",
+          "months": [
+            6,
+            7,
+            8
+          ],
+          "risk": {
+            "tMinC": 20,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 2
+          },
+          "severity": 2,
+          "signs": "Brown spots with concentric rings ('target spots') on older leaves.",
+          "scout": "Check lower leaves from flowering, especially in stressed or N-deficient crops.",
+          "action": "Balanced nutrition and irrigation; fungicide registered for potato if it spreads.",
+          "satellite": null
+        },
+        {
+          "id": "potato-wireworms",
+          "name": "Wireworms",
+          "nameBg": "Телени червеи",
+          "latin": "Agriotes spp.",
+          "type": "insect",
+          "months": [
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": false,
+            "rainDaysMin": null
+          },
+          "severity": 2,
+          "signs": "Narrow holes in tubers, lowering market quality.",
+          "scout": "Bait traps before planting after grassland.",
+          "action": "Avoid planting after grass; harvest on time.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 160,
+        "P2O5": 100,
+        "K2O": 200,
+        "note": "Potatoes prefer potassium as sulphate; split nitrogen at planting and hilling."
+      }
+    },
+    "Lavender": {
+      "pests": [
+        {
+          "id": "lavender-root-rot",
+          "name": "Root and crown rot",
+          "nameBg": "Кореново гниене",
+          "latin": "Phytophthora spp., Fusarium oxysporum",
+          "type": "disease",
+          "months": [
+            4,
+            5,
+            6,
+            9,
+            10
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 4
+          },
+          "severity": 3,
+          "signs": "Plants wilt, turn grey and die, often one by one along the row or in wet low spots; roots are brown and rotten.",
+          "scout": "Check after periods of heavy rain or over-irrigation, especially in young plantations.",
+          "action": "Plant only healthy, certified planting stock on well-drained soil; avoid waterlogging and over-irrigation; remove dead plants.",
+          "satellite": "Gaps and dying bushes in wet low spots give patchy NDVI loss."
+        },
+        {
+          "id": "lavender-septoria",
+          "name": "Septoria leaf spot",
+          "nameBg": "Септориоза",
+          "latin": "Septoria lavandulae",
+          "type": "disease",
+          "months": [
+            5,
+            6,
+            9
+          ],
+          "risk": {
+            "tMinC": 12,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 3
+          },
+          "severity": 2,
+          "signs": "Brown spots on leaves; leaves dry and drop, weakening bushes.",
+          "scout": "Check after rainy periods.",
+          "action": "Good air flow, avoid overhead irrigation; fungicide registered for lavender if needed.",
+          "satellite": null
+        },
+        {
+          "id": "lavender-moth",
+          "name": "Lavender moth",
+          "nameBg": null,
+          "latin": "Sophronia humerella",
+          "type": "insect",
+          "months": [
+            4,
+            5,
+            6
+          ],
+          "risk": {
+            "tMinC": 15,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Small caterpillars web and eat young shoots in spring.",
+          "scout": "Check shoots in spring.",
+          "action": "Usually minor; spray only on heavy attacks, outside flowering.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 60,
+        "P2O5": 60,
+        "K2O": 80,
+        "note": "Lavender needs little nitrogen; too much lowers oil quality and makes bushes soft."
+      }
+    },
+    "Cover crop": {
+      "pests": [
+        {
+          "id": "slugs",
+          "name": "Slugs",
+          "nameBg": "Голи охлюви",
+          "latin": "Deroceras reticulatum and other species",
+          "type": "slug",
+          "months": [
+            9,
+            10,
+            11,
+            3,
+            4
+          ],
+          "risk": {
+            "tMinC": 5,
+            "tMaxC": 25,
+            "humid": true,
+            "dry": false,
+            "rainDaysMin": 4
+          },
+          "severity": 2,
+          "signs": "Shredded seedlings and slime trails; cover crops can raise slug numbers for the next crop.",
+          "scout": "Put out shelter traps (e.g. a board) in damp weather and check in the morning.",
+          "action": "Firm, fine seedbeds and rolling reduce slugs; use registered slug pellets only if damage is heavy.",
+          "satellite": null
+        },
+        {
+          "id": "cover-crop-voles",
+          "name": "Common vole",
+          "nameBg": "Полевка",
+          "latin": "Microtus arvalis",
+          "type": "rodent",
+          "months": [
+            10,
+            11,
+            2,
+            3
+          ],
+          "risk": {
+            "tMinC": null,
+            "tMaxC": null,
+            "humid": false,
+            "dry": true,
+            "rainDaysMin": null
+          },
+          "severity": 1,
+          "signs": "Holes and runways under dense cover; voles can then move into the next crop.",
+          "scout": "Count active holes in autumn and early spring.",
+          "action": "Terminate cover on time, shallow tillage, perches for birds of prey.",
+          "satellite": null
+        }
+      ],
+      "nutrients": {
+        "N": 0,
+        "P2O5": 0,
+        "K2O": 0,
+        "note": "Usually no fertilizer: the cover crop uses leftover nitrogen after harvest; a legume mix adds N for the next crop."
+      }
+    }
+  },
+  "deficiencies": [
+    {
+      "nutrient": "N",
+      "name": "Nitrogen",
+      "nameBg": "Азот",
+      "signs": "Pale yellow-green plants; older (lower) leaves turn yellow first, starting from the tip; weak growth and few tillers.",
+      "satellite": "Lower and paler NDVI and red-edge index (NDRE) with normal soil moisture, usually even over the whole field or following fertilizer spreading strips, not in round spots.",
+      "fix": "Top-dress nitrogen (e.g. ammonium nitrate or urea) at the next growth stage; split doses rather than one big dose.",
+      "likelyWhen": "After heavy winter or spring rain (leaching), on sandy soils or soils low in organic matter, after a non-legume crop with lots of straw."
+    },
+    {
+      "nutrient": "P",
+      "name": "Phosphorus",
+      "nameBg": "Фосфор",
+      "signs": "Dark green or purple-red leaves (especially corn), slow early growth and poor roots.",
+      "satellite": "Slower NDVI rise in spring, often uneven by soil type; hard to separate from cold stress.",
+      "fix": "Band phosphate at sowing; plan P by soil test because foliar sprays only help short term.",
+      "likelyWhen": "Cold wet springs, carbonate (high pH) soils and long periods without P fertilizer, common in Bulgaria."
+    },
+    {
+      "nutrient": "K",
+      "name": "Potassium",
+      "nameBg": "Калий",
+      "signs": "Older leaves yellow and brown along the edges ('scorch'); plants wilt faster and lodge.",
+      "satellite": "Lower NDVI that gets worse in dry periods, often on lighter soils.",
+      "fix": "Apply potash by soil test before sowing; potato and beet need large amounts.",
+      "likelyWhen": "Sandy or eroded soils, high-demand crops (sugar beet, potato, alfalfa) and dry soils."
+    },
+    {
+      "nutrient": "S",
+      "name": "Sulphur",
+      "nameBg": "Сяра",
+      "signs": "Young (upper) leaves turn pale yellow while older ones stay green; rapeseed shows pale, marbled leaves and pale flowers.",
+      "satellite": "Like nitrogen deficiency (pale, lower NDVI) but does not improve after N fertilizer.",
+      "fix": "Apply sulphate fertilizer (e.g. ammonium sulphate) in spring, especially for rapeseed and cereals.",
+      "likelyWhen": "Light soils after wet winters, rapeseed, and fields without manure."
+    },
+    {
+      "nutrient": "Mg",
+      "name": "Magnesium",
+      "nameBg": "Магнезий",
+      "signs": "Yellowing between the veins of older leaves while veins stay green; sometimes reddish tints.",
+      "satellite": "Slight NDVI decline, usually patchy by soil type; rarely visible alone.",
+      "fix": "Foliar magnesium sulphate for quick help; dolomitic lime on acid soils.",
+      "likelyWhen": "Acid, sandy soils and after heavy potassium fertilizing."
+    },
+    {
+      "nutrient": "Zn",
+      "name": "Zinc",
+      "nameBg": "Цинк",
+      "signs": "Corn shows wide white-yellow bands on both sides of the midrib on young leaves; short internodes.",
+      "satellite": "Patchy lower NDVI in young corn in May-June, often on eroded tops or carbonate spots.",
+      "fix": "Foliar zinc spray at 4-8 leaves or zinc with the starter fertilizer.",
+      "likelyWhen": "Carbonate chernozems (Dobrudzha), high phosphorus, cold wet springs, eroded or levelled spots."
+    },
+    {
+      "nutrient": "B",
+      "name": "Boron",
+      "nameBg": "Бор",
+      "signs": "Deformed growing points and young leaves; hollow or rotten heart in beet; poor seed set in sunflower and rapeseed.",
+      "satellite": "Usually not visible until late damage.",
+      "fix": "Foliar boron spray before flowering (rapeseed, sunflower, beet, alfalfa).",
+      "likelyWhen": "Dry summers, alkaline or limed soils and sandy soils."
+    },
+    {
+      "nutrient": "Mn",
+      "name": "Manganese",
+      "nameBg": "Манган",
+      "signs": "Pale stripes or spots between veins on younger leaves; grey specks on oats and wheat.",
+      "satellite": "Patchy lower NDVI on loose, high-pH spots.",
+      "fix": "Foliar manganese sulphate spray; rolling loose seedbeds helps.",
+      "likelyWhen": "High pH, loose or puffy soils and dry springs."
+    }
+  ],
+  "sources": [
+    {
+      "title": "EPPO Global Database",
+      "url": "https://gd.eppo.int/"
+    },
+    {
+      "title": "Agricultural University Plovdiv: PhD summary on rapeseed pests (A. Ivanov, 2024)",
+      "url": "https://www.au-plovdiv.bg/docs/Razvitie_AS/PhD/2024/A_Ivanov/Resumes_A_Ivanov_BG.pdf"
+    },
+    {
+      "title": "Lavender in Bulgaria II: diseases and pests (CEEOL)",
+      "url": "https://ceeol.com/search/article-detail?id=1178944"
+    },
+    {
+      "title": "Bulgarian ordinance on integrated pest management and economic thresholds (agri.bg)",
+      "url": "https://agri.bg/files/documents/2015/06/08/merged_document_385.pdf"
+    },
+    {
+      "title": "IRAC: Psylliodes chrysocephala",
+      "url": "https://irac-online.org/pests/psylliodes-chrysocephala"
+    },
+    {
+      "title": "Rothamsted: Integrated pest management strategies for cabbage stem flea beetle (GCB Bioenergy, 2021)",
+      "url": "https://repository.rothamsted.ac.uk/download/95320eeb4d1bf62f16290bb2e3e64a3c809fe8c3ce4a8fc1a2c5670e4ac0075d/21361271/GCB%20Bioenergy%20-%202021%20-%20Ortega%E2%80%90Ramos%20-%20Integrated%20pest%20management%20strategies%20for%20cabbage%20stem%20flea%20beetle%20%20Psylliodes.pdf"
+    },
+    {
+      "title": "AHDB: Bacterial blight of coriander",
+      "url": "https://archive.ahdb.org.uk/knowledge-library/bacterial-blight-of-coriander"
+    },
+    {
+      "title": "Effect of bioinsecticides on the grey maize weevil Tanymecus dilaticollis (FAO AGRIS)",
+      "url": "https://agris.fao.org/search/en/records/65df0c8d7c7033e84becc645"
+    }
+  ]
+}

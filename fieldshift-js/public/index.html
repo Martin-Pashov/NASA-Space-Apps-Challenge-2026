@@ -18,7 +18,7 @@
   <div id="start" class="page">
     <header class="brandbar">
       <a class="logo" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2b241d"/><path d="M6 6h11.5l-2 9H6z" fill="#e0b12f"/><path d="M20 6h6v12h-8.6z" fill="#6f9e5c"/><path d="M6 17.5h9l-1.6 8.5H6z" fill="#6f9e5c"/><path d="M16.9 20.5H26V26H15.8z" fill="#c9a14a"/></svg>FieldShift</a>
-      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
+      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">NASA SRTM</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
     </header>
     <section class="hero">
       <div>
@@ -30,6 +30,19 @@
         <li><span class="ico soil">🌾</span><span><b>24 seasons of stress tests</b>Every crop checked against drought and heat years, back-tested on the 2020 Dobrudzha drought.</span></li>
         <li><span class="ico plan">📋</span><span><b>A rotation plan in euros</b>What to sow next, when, and what it earns in a normal and a bad year.</span></li>
       </ul>
+    </section>
+
+    <section class="about card" id="about">
+      <div class="about-head">
+        <p class="eyebrow">Who we are</p>
+        <h2>Space data that actually reaches the farmer</h2>
+        <p class="muted">FieldShift is built by a Bulgarian team at the NASA Space Apps Challenge 2026 (Sofia).</p>
+      </div>
+      <div class="about-grid">
+        <div><h3>😟 The problem</h3><p>NASA and ESA collect enormous amounts of free data about every field on Earth: rain, heat, soil moisture, crop growth. Almost none of it reaches the farmer in a form he can use. Decisions are made from memory, while droughts get more frequent.</p></div>
+        <div><h3>🛰️ What we do</h3><p>We read 25 years of NASA climate data, 5 years of Sentinel-2 satellite images of <i>your</i> field, the soil and the slope, plus the weather forecast, and turn them into plain answers: what to sow, what it earns in a normal and a bad year, and what to watch out for.</p></div>
+        <div><h3>✅ How it helps</h3><p>You make an informed decision about your own fields: compare your rotation with 2 better options, get warned about hail, frost, drought and pests in time, and see the evidence behind every number. Free, no account.</p></div>
+      </div>
     </section>
 
     <!-- STEP 1 -->
@@ -78,13 +91,14 @@
       </div>
 
       <div id="historyBox" class="history">
-        <p class="q">What did you grow in the last seasons? <small>(fill what you remember, at least one)</small></p>
-        <div class="presets"><span class="muted">Quick fill:</span>
+        <p class="q">What did you grow on this field?</p>
+        <p class="muted small history-help">Start with this year and go back. Fill in what you remember: one season is enough, empty years are fine.</p>
+        <div class="presets"><span class="muted">Common patterns:</span>
           <button type="button" class="chip-btn" data-preset="Wheat,Sunflower">Wheat ↔ Sunflower</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Corn">Wheat ↔ Corn</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Rapeseed,Sunflower">Wheat › Rapeseed › Sunflower</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Wheat">Only wheat</button>
-          <button type="button" class="chip-btn" data-preset="">Clear</button>
+          <button type="button" class="link-btn" data-preset="">Clear all</button>
         </div>
         <div id="historyRows" class="history-rows"></div>
         <datalist id="cropList"></datalist>
@@ -101,13 +115,16 @@
       <label id="cropPick" class="field-select" hidden>Which crop? <select id="focusCrop"></select></label>
 
       <p class="q">What matters most to you? <small>(pick one or more)</small></p>
-      <div class="priorities" id="priorities"></div>
+      <div class="priorities main" id="prioritiesMain"></div>
+      <details class="more-prio"><summary>More priorities</summary><div class="priorities" id="priorities"></div></details>
     </section>
 
     <div class="go">
+      <div id="preCheck" class="precheck" hidden></div>
       <button id="analyze" class="btn primary" disabled>Analyse my field</button>
       <p id="goHint" class="muted">Select a field on the map first.</p>
-      <p class="muted small">Free, no account. Your field's location is only used to fetch public satellite and climate data. Takes about a minute.</p>
+      <p class="muted small">Free, no account. Your field's location is only used to fetch public satellite and climate data. Usually takes 5–60 seconds (faster for fields checked before).</p>
+      <p class="agronomist-note">🧑‍🌾 FieldShift helps you decide. It does <b>not</b> replace your local agronomist.</p>
     </div>
   </div>
 
@@ -115,7 +132,7 @@
   <div id="progress" class="page" hidden>
     <header class="brandbar">
       <a class="logo" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2b241d"/><path d="M6 6h11.5l-2 9H6z" fill="#e0b12f"/><path d="M20 6h6v12h-8.6z" fill="#6f9e5c"/><path d="M6 17.5h9l-1.6 8.5H6z" fill="#6f9e5c"/><path d="M16.9 20.5H26V26H15.8z" fill="#c9a14a"/></svg>FieldShift</a>
-      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
+      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">NASA SRTM</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
     </header>
     <section class="card progress-card">
       <h2>Analysing your field…</h2>
@@ -130,20 +147,34 @@
   <div id="results" class="page" hidden>
     <header class="brandbar">
       <a class="logo" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2b241d"/><path d="M6 6h11.5l-2 9H6z" fill="#e0b12f"/><path d="M20 6h6v12h-8.6z" fill="#6f9e5c"/><path d="M6 17.5h9l-1.6 8.5H6z" fill="#6f9e5c"/><path d="M16.9 20.5H26V26H15.8z" fill="#c9a14a"/></svg>FieldShift</a>
-      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
+      <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">NASA SRTM</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
     </header>
     <div class="resultbar">
       <div class="resultbar-row">
         <div class="place"><button id="back" class="btn ghost">← Change field</button><div><b id="placeName"></b><p class="muted" id="coords"></p></div></div>
-        <div class="units">Areas in <button class="unit-btn" data-unit="dka">decares</button><button class="unit-btn" data-unit="ha">hectares</button></div>
+        <div class="bar-right">
+          <div class="view-switch" role="group" aria-label="How much detail">
+            <button class="view-btn" data-view="simple">👀 Simple</button><button class="view-btn" data-view="detailed">🔬 Detailed</button>
+          </div>
+          <div class="units">Areas in <button class="unit-btn" data-unit="dka">decares</button><button class="unit-btn" data-unit="ha">hectares</button></div>
+        </div>
       </div>
       <nav class="section-nav" id="sectionNav">
-        <a href="#answer">Suggestion</a><a href="#insightsSec">Your field</a><a href="#optionsSec">Options</a><a href="#cropsSec">Crops</a><a href="#chartsSec">Charts</a><a href="#methodSec">How it works</a>
+        <a href="#answer">Suggestion</a><a href="#alertsSec">Alerts</a><a href="#optionsSec">3 strategies</a><a href="#predictSec">Season risk</a><a href="#pestsSec">Pests &amp; fertilizer</a><a href="#insightsSec" class="detail-only">Your field</a><a href="#cropsSec" class="detail-only">Crops</a><a href="#chartsSec" class="detail-only">Charts</a><a href="#guideSec">How to read this</a><a href="#methodSec" class="detail-only">Method</a>
       </nav>
     </div>
     <p class="history-line" id="historyLabel"></p>
 
+    <div class="agronomist" role="note"><span>🧑‍🌾</span><p><b>FieldShift helps you decide, it does not replace your local agronomist.</b> Numbers come from satellites, regional weather and regional prices. Before you change crops, spray or fertilise, check with an agronomist, your buyers and the product label.</p></div>
+
+    <p class="view-hint simple-only">You're seeing the <b>simple view</b>: only the most important things. Switch to <button class="link-btn inline" data-view="detailed">🔬 Detailed</button> for all data, charts and the science behind every number.</p>
+    <p class="view-hint detail-only">You're seeing the <b>detailed view</b> with all data and scientific reasons. <button class="link-btn inline" data-view="simple">👀 Back to simple</button></p>
+
     <section id="answer" class="card answer"></section>
+
+    <section id="glance" class="glance simple-only"></section>
+
+    <section id="alertsSec" class="card"></section>
 
     <section id="basics" class="card basics" hidden>
       <h2>New to crop rotation? The basics in 30 seconds</h2>
@@ -157,20 +188,24 @@
 
     <section id="verdictBox" class="card" hidden></section>
 
-    <section class="card" id="insightsSec">
+    <section class="card detail-only" id="insightsSec">
       <h2>What the satellites see that you can't</h2>
       <p class="muted">Read from your field's own pixels and the weather records for this exact spot.</p>
       <div id="insights" class="insights"></div>
     </section>
 
-    <section id="satHistory" class="card" hidden></section>
+    <section id="satHistory" class="card detail-only" hidden></section>
 
     <section class="card" id="optionsSec">
-      <h2>Your options for the next 3 years</h2>
-      <p class="muted">Each option is checked against every season of the last 24 years of weather on this field.</p>
-      <div class="table-wrap"><table id="compare" class="compare"></table></div>
-      <p class="muted">Profit = harvest value minus typical growing costs, before land rent and subsidies. Normal year = the middle of the last 24 seasons; bad year = about the 3rd-worst (1 year in 10). A negative bad year means you'd lose money that year, like many farms in Dobrich in 2020.</p>
+      <h2>3 strategies compared</h2>
+      <p class="muted">Your current rotation (the baseline) and 2 new strategies, each checked against every season of the last 24 years of weather on this field.</p>
+      <p class="prio-line" id="prioLine"></p>
       <div id="strategies" class="strategies"></div>
+      <div class="detail-only">
+        <h3 class="sub">Side by side</h3>
+        <div class="table-wrap"><table id="compare" class="compare"></table></div>
+        <p class="muted">Profit = harvest value minus typical growing costs, before land rent and subsidies. Normal year = the middle of the last 24 seasons; bad year = about the 3rd-worst (1 year in 10). A negative bad year means you'd lose money that year, like many farms in Dobrich in 2020.</p>
+      </div>
       <details class="adjust-wrap" id="ownWrap"><summary>Use your own yields and prices</summary>
         <p class="muted">Change the numbers to match your farm. All profits update right away.</p>
         <div id="ownNumbers" class="own"></div>
@@ -178,7 +213,35 @@
       <details class="adjust-wrap"><summary>Fine-tune what matters to you</summary><div id="adjust" class="adjust"></div></details>
     </section>
 
-    <section class="card" id="cropsSec">
+    <section id="predictSec" class="card"></section>
+
+    <section id="pestsSec" class="card"></section>
+
+    <section id="monitorSec" class="card">
+      <h2>📱 Get alerts on your phone</h2>
+      <p class="muted">We check your field every 6 hours: weather forecast, satellite images and pest risk. You get an <b>automated call + SMS</b> for urgent alerts and an SMS for warnings.</p>
+      <form id="monitorForm" class="monitor-form" autocomplete="on">
+        <label>Mobile number<input id="monPhone" type="tel" inputmode="tel" placeholder="0888 123 456" autocomplete="tel" required></label>
+        <label>Send me<select id="monLevel">
+          <option value="urgent">only URGENT (call + SMS)</option>
+          <option value="warning" selected>URGENT and WARNINGS</option>
+          <option value="advice">also RECOMMENDATIONS</option>
+        </select></label>
+        <button class="btn primary small-btn" type="submit">Turn on alerts</button>
+      </form>
+      <p id="monStatus" class="muted" role="status"></p>
+      <div id="monResult"></div>
+      <details class="adjust-wrap"><summary>No signal in the field? How alerts still reach you</summary>
+        <ul>
+          <li><b>SMS waits for you.</b> An SMS is stored by the mobile network and delivered the moment your phone catches even a weak 2G signal, which is enough for SMS but not for internet. No app or mobile data needed.</li>
+          <li><b>Urgent alerts come early.</b> Hail, frost and storm alerts are sent as soon as the forecast shows them (often 1–3 days ahead), usually while you're still in the village, not in the field.</li>
+          <li><b>The call is repeated</b> if you don't answer, and every alert is also sent by SMS so it's waiting for you.</li>
+          <li><b>Next step:</b> new phones can receive SMS directly via satellite where there is no mobile network at all (direct-to-phone satellite messaging). FieldShift sends a standard SMS, so it works with that too.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="card detail-only" id="cropsSec">
       <h2>Crops that suit this field</h2>
       <p class="muted">Good seasons = years with enough rain at sowing, through winter and spring, and while growing, and no heat stress, on this field's weather.</p>
       <div class="table-wrap"><table id="cropTable"></table></div>
@@ -190,7 +253,7 @@
       </details>
     </section>
 
-    <section class="card" id="chartsSec">
+    <section class="card detail-only" id="chartsSec">
       <h2>Your field over time</h2>
       <div class="charts">
         <div><p class="chart-title">Greenness of your field (higher = more plant growth)</p><p class="muted">ESA Sentinel-2, every 10 days. Blue = moisture in the plants and soil.</p><div class="chart"><canvas id="fieldChart"></canvas></div><p class="muted" id="fieldChartNote"></p></div>
@@ -202,22 +265,29 @@
       </div>
     </section>
 
-    <details class="card">
+    <section id="checksSec" class="card"></section>
+
+    <section id="guideSec" class="card"></section>
+
+    <details class="card detail-only">
       <summary>What this tool doesn't know</summary>
       <ul id="gaps"></ul>
     </details>
 
-    <details class="card">
+    <details class="card detail-only">
       <summary>All rotations compared</summary>
       <div class="table-wrap"><table id="ranking"></table></div>
     </details>
 
-    <details class="card" id="methodSec">
+    <details class="card detail-only" id="methodSec">
       <summary>How this works and where the data comes from</summary>
       <p><b>Data, fetched live for your field:</b> NASA POWER (25 years of monthly temperature and rain + the last 12 months daily), ESA Copernicus Sentinel-2 via Sentinel Hub (greenness NDVI, SAVI, moisture NDMI and bare soil index every 10 days for 5 years, only inside your field outline, clouds removed), ISRIC SoilGrids (texture, organic carbon, pH), NASA SRTM elevation (slope). Field outlines from OpenStreetMap, province borders from Natural Earth.</p>
       <p><b>Stress test:</b> every crop is checked against every past season: enough rain at sowing (autumn crops), enough water while growing (rain + water stored in the soil), no dry winter and spring (rain from October until the crop's sensitive months at least 80% of what's normal for this field, because a dry winter leaves the soil empty), and no heat stress in its sensitive months. We back-tested this against the Ministry of Agriculture report on the 2020 drought in Dobrich (wheat yields 68% below normal): the model marks 2020 as a bad year. The 2035 outlook shifts past weather along the measured trend. It's a projection, not a forecast.</p>
       <p><b>Satellite history:</b> crops sown in autumn (wheat, barley, rapeseed) are already green in March–April; spring crops (sunflower, corn) are still bare then. That's how we tell them apart from space.</p>
       <p><b>Comparing options:</b> profit uses each year's real outcome (bad season = half yield) plus nitrogen left by legumes; a crop after itself loses ~15%. "Better / About the same / Worse fit" combines what you said matters to you.</p>
+      <p><b>Season risk (machine learning):</b> analog-year k-nearest neighbours. For each of the 24 past seasons we measure the same things we can measure today (rain before sowing, rain since October including this month's rain and the 7-day forecast, temperature). The 13 past seasons most similar to this one vote, closer ones count more, mixed with the crop's long-term average so a few years can't give 0% or 100%. Leave-one-out validation predicts every past season from the others; the score is shown next to the result, compared with simply using the long-term average.</p>
+      <p><b>Alerts:</b> the 7-day forecast (ECMWF and DWD ICON models) is checked for hail (thunderstorm with hail codes), heavy rain and floods, frost, heat, drought and storms; the latest Sentinel-2 image is compared with the same weeks in earlier years to spot a sudden drop in greenness (pests, disease, nutrient shortage or drought); and a pest model checks each crop's main pests against the forecast temperature and rain. Levels: URGENT (call + SMS), WARNING (SMS), RECOMMENDATION and INFO (in the app).</p>
+      <p><b>Validation:</b> every data source is checked for missing or impossible values before it's used or saved in the cache, crop names are spell-checked and looked up in the GBIF plant database, and the results are checked for consistency (shown in "Data and result checks").</p>
     </details>
     <p class="disclaimer">Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. FieldShift helps you explore options. Always check new crops with a local agronomist, your buyers and your machinery.</p>
   </div>

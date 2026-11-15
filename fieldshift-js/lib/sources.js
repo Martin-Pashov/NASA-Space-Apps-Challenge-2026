@@ -106,7 +106,7 @@ export async function getTerrain(lat, lon) {
 }
 
 // ---------- ESA Sentinel-2 via Copernicus Sentinel Hub ----------
-// 10-day averages for the last ~5 years: [{date, ndvi, savi, ndmi, bsi, bare}]
+// 10-day averages for the last ~5 years: [{date, ndvi, savi, ndmi, bsi, bare, ndviStd}]
 const TOKEN_URL = 'https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token';
 const STATS_URL = 'https://sh.dataspace.copernicus.eu/api/v1/statistics';
 
@@ -148,6 +148,17 @@ async function getToken() {
   return cachedToken.value;
 }
 
+async function statistics(body) {
+  const res = await fetch(STATS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
+    body: JSON.stringify(body),
+    signal: timeout(180000),
+  });
+  if (!res.ok) throw new Error(`Sentinel Hub ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return res.json();
+}
+
 // geometry: GeoJSON Polygon of the field (lon/lat). Only pixels inside it are counted.
 export async function getSentinel(geometry) {
   const startYear = new Date().getFullYear() - 5;
@@ -163,24 +174,122 @@ export async function getSentinel(geometry) {
       resx: 0.0001, resy: 0.0001, // ~10 m pixels
     },
   };
-  const res = await fetch(STATS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getToken()}` },
-    body: JSON.stringify(body),
-    signal: timeout(180000),
-  });
-  if (!res.ok) throw new Error(`Sentinel Hub ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
   const rows = [];
-  for (const item of (await res.json()).data ?? []) {
+  for (const item of (await statistics(body)).data ?? []) {
     const o = item.outputs ?? {};
     const mean = id => o[id]?.bands?.B0?.stats?.mean;
     const r = { date: item.interval.from.slice(0, 10), ndvi: mean('ndvi'), savi: mean('savi'), ndmi: mean('ndmi'), bsi: mean('bsi') };
     if (typeof r.ndvi !== 'number' || typeof r.bsi !== 'number') continue; // fully cloudy period
     r.bare = r.bsi > 0.05 && r.ndvi < 0.25 ? 1 : 0; // same rule as analysis.js
+    // NDVI spread inside the field: rising = patchy damage (pests/disease), low = uniform (drought/nutrients)
+    const st = o.ndvi?.bands?.B0?.stats ?? {};
+    const std = st.stDev ?? st.stdev;
+    if (typeof std === 'number' && Number.isFinite(std)) r.ndviStd = std;
     rows.push(r);
   }
   return rows;
+}
+
+// ---------- ESA Sentinel-1 radar (sees through clouds) ----------
+// 10-day averages of VV/VH backscatter (linear) for the last 2 years: [{date, vv, vh, rvi}]
+// rvi = 4*VH/(VV+VH): radar vegetation index, rises as the crop canopy grows.
+const S1_EVALSCRIPT = `//VERSION=3
+function setup() {
+  return {
+    input: ["VV", "VH", "dataMask"],
+    output: [
+      { id: "vv", bands: 1, sampleType: "FLOAT32" },
+      { id: "vh", bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1 }
+    ]
+  };
+}
+function evaluatePixel(s) {
+  return { vv: [s.VV], vh: [s.VH], dataMask: [s.dataMask] };
+}`;
+
+export async function getSentinel1(geometry) {
+  const from = new Date(Date.now() - 2 * 365 * 864e5);
+  const body = {
+    input: {
+      bounds: { geometry, properties: { crs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84' } },
+      data: [{
+        type: 'sentinel-1-grd',
+        dataFilter: { acquisitionMode: 'IW', polarization: 'DV', resolution: 'HIGH' },
+        processing: { orthorectify: true, backCoeff: 'GAMMA0_TERRAIN' },
+      }],
+    },
+    aggregation: {
+      timeRange: { from: from.toISOString(), to: new Date().toISOString() },
+      aggregationInterval: { of: 'P10D' },
+      evalscript: S1_EVALSCRIPT,
+      resx: 0.0001, resy: 0.0001,
+    },
+  };
+  const rows = [];
+  for (const item of (await statistics(body)).data ?? []) {
+    const o = item.outputs ?? {};
+    const vv = o.vv?.bands?.B0?.stats?.mean, vh = o.vh?.bands?.B0?.stats?.mean;
+    if (typeof vv !== 'number' || typeof vh !== 'number' || !(vv + vh > 0)) continue;
+    rows.push({ date: item.interval.from.slice(0, 10), vv, vh, rvi: 4 * vh / (vv + vh) });
+  }
+  return rows;
+}
+
+// ---------- Open-Meteo: 16-day weather forecast (free, no key) ----------
+// { source, days: [{date, tMax, tMin, tMean, rainMm, rainProb, code, gustKmh, et0Mm}] }
+// 7 days from today, from the two most accurate weather models for Europe, both via Open-Meteo:
+// ECMWF IFS (European Centre, the world's best-rated global model) and DWD ICON (German Weather
+// Service, 7-13 km over Europe, the only one that reports hail). Temperature and rain come from
+// ECMWF (ICON if missing); hail/thunder codes and wind gusts take the worse of the two, so a hazard
+// seen by either model is not missed.
+const FORECAST_DAYS = 7;
+const MODELS = ['ecmwf_ifs025', 'icon_seamless'];
+const DAILY = 'temperature_2m_max,temperature_2m_min,temperature_2m_mean,precipitation_sum,precipitation_probability_max,weather_code,wind_gusts_10m_max,et0_fao_evapotranspiration';
+const DAILY_BASIC = 'temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code';
+
+async function openMeteo(lat, lon, params) {
+  const url = new URL('https://api.open-meteo.com/v1/forecast');
+  url.search = new URLSearchParams({ latitude: (+lat).toFixed(4), longitude: (+lon).toFixed(4), timezone: 'auto', forecast_days: FORECAST_DAYS, ...params });
+  const res = await fetch(url, { signal: timeout(12000), headers: { 'User-Agent': UA } });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || j.error) throw new Error(`Open-Meteo ${res.status}${j.reason ? `: ${j.reason}` : ''}`);
+  return j;
+}
+
+// value of a daily variable for one model (multi-model responses suffix the keys: temperature_2m_max_ecmwf_ifs025)
+const pick = (d, k, i, model) => {
+  const v = (model ? d[`${k}_${model}`] : null) ?? d[k];
+  return typeof v?.[i] === 'number' ? v[i] : null;
+};
+const first = (...vals) => vals.find(v => v != null) ?? null;
+const worst = (...vals) => { const v = vals.filter(x => x != null); return v.length ? Math.max(...v) : null; };
+
+export async function getForecast(lat, lon) {
+  let j, models = MODELS;
+  try { j = await openMeteo(lat, lon, { daily: DAILY, models: MODELS.join(',') }); }
+  catch (err) {
+    console.warn('Forecast (ECMWF + ICON) failed ->', err.message);
+    models = [null]; // Open-Meteo's own best model choice, basic variables only
+    j = await openMeteo(lat, lon, { daily: DAILY_BASIC });
+  }
+  const d = j.daily ?? {};
+  const [a, b] = models;
+  const days = (d.time ?? []).map((date, i) => {
+    const get = k => first(pick(d, k, i, a), b ? pick(d, k, i, b) : null);
+    const tMax = get('temperature_2m_max'), tMin = get('temperature_2m_min');
+    return {
+      date, tMax, tMin,
+      tMean: get('temperature_2m_mean') ?? (tMax != null && tMin != null ? (tMax + tMin) / 2 : null),
+      rainMm: get('precipitation_sum'),
+      rainProb: get('precipitation_probability_max'),
+      code: worst(pick(d, 'weather_code', i, a), b ? pick(d, 'weather_code', i, b) : null),
+      gustKmh: worst(pick(d, 'wind_gusts_10m_max', i, a), b ? pick(d, 'wind_gusts_10m_max', i, b) : null),
+      et0Mm: get('et0_fao_evapotranspiration'),
+    };
+  }).filter(x => x.tMax != null && x.tMin != null).slice(0, FORECAST_DAYS);
+  if (!days.length) throw new Error('Open-Meteo returned no forecast days');
+  return { source: models[0] ? 'ECMWF IFS + DWD ICON (via Open-Meteo)' : 'Open-Meteo', days };
 }
 
 // ---------- OpenStreetMap Overpass: auto-detect the field shape ----------

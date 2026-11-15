@@ -1,13 +1,18 @@
 import * as A from './analysis.js';
 import * as M from './map.js';
+import * as V from './validate.js';
+import * as ML from './ml.js';
+import * as AL from './alerts.js';
 
 const $ = id => document.getElementById(id);
 const r0 = x => Math.round(x);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const YEAR = new Date().getFullYear();
-const HISTORY_YEARS = [YEAR - 4, YEAR - 3, YEAR - 2, YEAR - 1, YEAR];
+const HISTORY_YEARS = [YEAR, YEAR - 1, YEAR - 2, YEAR - 3, YEAR - 4]; // newest first, as farmers remember it
 const REFERENCE_ROTATION = 'Wheat > Sunflower';
-const state = { crops: [], rotations: {}, field: null, placeName: '', data: null, weights: null, ctx: null, overrides: {} };
+const SURE_DAYS = 7;   // forecast days used (the server fetches 7 days from today)
+const SHOW_DAYS = 7;
+const state = { crops: [], rotations: {}, pests: null, field: null, placeName: '', data: null, weights: null, ctx: null, overrides: {} };
 const charts = {};
 
 // ================= RECENT FIELDS (localStorage) =================
@@ -47,6 +52,7 @@ function onFieldChange(field) {
   $('clearField').hidden = !field;
   $('fieldCard').classList.toggle('empty', !field);
   $('goHint').textContent = field ? '' : 'Select a field on the map first.';
+  refreshPreCheck(!!field && !!state.crops.length);
   if (!field) {
     $('fieldName').textContent = 'No field selected yet';
     $('fieldMeta').textContent = 'Click on the map, or use the ▭ and ⬠ tools on the left to draw your field.';
@@ -100,56 +106,140 @@ async function search(e) {
 // ================= HISTORY =================
 
 function historyRow(year) {
-  return `<div class="history-row" data-year="${year}"><span class="year">${year}</span>
-    <input list="cropList" placeholder="e.g. Wheat / Пшеница, or any crop">
+  const ago = YEAR - year;
+  const when = ago === 0 ? 'this year' : ago === 1 ? 'last year' : `${ago} years ago`;
+  const placeholder = ago === 0 ? 'e.g. Wheat / Пшеница, or any crop' : 'Type a crop, or leave empty';
+  return `<div class="history-row" data-year="${year}">
+    <label class="year" for="hist-${year}">${year}<small>${when}</small></label>
+    <div class="history-input"><input id="hist-${year}" list="cropList" placeholder="${placeholder}" autocomplete="off">
+      <button type="button" class="row-clear" aria-label="Clear ${year}" title="Clear" hidden>×</button></div>
     <span class="resolved"></span></div>`;
 }
 
+function syncClear(row) {
+  row.querySelector('.row-clear').hidden = !row.querySelector('input').value;
+}
+
+// Each row is checked as you type: known crop, other name we know, misspelling ("Did you mean…?"),
+// not a crop name at all, or a real plant we don't model yet (then GBIF confirms it exists).
 function resolveRow(row) {
   const input = row.querySelector('input'), out = row.querySelector('.resolved');
-  const groupSel = out.querySelector('select');
-  const r = A.resolveCrop(input.value, state.crops, groupSel?.value || undefined);
-  row.dataset.crop = '';
-  if (!r) { out.innerHTML = ''; return; }
-  if (r.known) { out.innerHTML = `<span class="tag ok">✓ ${esc(r.crop)}</span>`; row.dataset.crop = r.crop; return; }
-  // unknown crop: ask which group it's closest to (pre-filled with our guess)
-  const options = Object.entries(A.GROUPS).map(([k, v]) => `<option value="${k}" ${k === r.group ? 'selected' : ''}>${v}</option>`).join('');
-  out.innerHTML = `<select class="group" aria-label="Closest crop group"><option value="">Which group is it closest to?</option>${options}</select>`;
-  out.querySelector('select').addEventListener('change', () => { resolveRow(row); $('historyError').hidden = true; });
-  if (r.crop) row.dataset.crop = r.crop;
+  const text = input.value;
+  const groupSel = out.querySelector('select.group');
+  const chk = V.checkCropName(text, state.crops);
+  Object.assign(row.dataset, { crop: '', status: chk.status, group: '' });
+  row._chk = chk;
+  row.classList.remove('bad');
+  const ok = crop => { out.innerHTML = `<span class="tag ok">✓ ${esc(crop)}</span>`; row.dataset.crop = crop; };
+  if (chk.status === 'empty') { out.innerHTML = ''; return; }
+  if (chk.status === 'known' || chk.status === 'alias') return ok(chk.crop);
+  if (chk.status === 'invalid') { out.innerHTML = `<span class="tag bad">✗ ${esc(chk.reason)}</span>`; row.classList.add('bad'); return; }
+  // "sunflower seeds" -> Sunflower, "tomatoes" -> vegetable group (not a typo of "potatoes")
+  const r = A.resolveCrop(text, state.crops, groupSel?.value || undefined);
+  if (r?.known && !groupSel) { row.dataset.status = 'alias'; return ok(r.crop); }
+  const guess = A.resolveCrop(text, state.crops)?.group ?? null;
+  if (chk.status === 'suggest' && !guess && !groupSel) {
+    out.innerHTML = `<span class="tag ask">Did you mean ${chk.suggestions.map(x => `<button type="button" class="sugg" data-s="${esc(x)}">${esc(x)}</button>`).join(' or ')}?</span>`;
+    out.querySelectorAll('.sugg').forEach(b => b.addEventListener('click', () => { input.value = b.dataset.s; out.innerHTML = ''; resolveRow(row); syncClear(row); $('historyError').hidden = true; }));
+    return;
+  }
+  // a crop we don't model: ask which group it's closest to (pre-filled with our guess)
+  row.dataset.status = 'unknown';
+  row.dataset.group = guess ?? '';
+  const chosen = groupSel?.value || r?.group || '';
+  const options = Object.entries(A.GROUPS).map(([k, v]) => `<option value="${k}" ${k === chosen ? 'selected' : ''}>${v}</option>`).join('');
+  out.innerHTML = `<select class="group" aria-label="Closest crop group"><option value="">Which group is it closest to?</option>${options}</select><span class="gbif"></span>`;
+  out.querySelector('select').addEventListener('change', () => { resolveRow(row); $('historyError').hidden = true; refreshPreCheck(); });
+  if (r?.crop) row.dataset.crop = r.crop;
+  checkPlantExists(row, text);
+}
+
+// Is it a real plant? Ask the GBIF species database (through our server). Offline = no verdict.
+const plantCache = {};
+function checkPlantExists(row, text) {
+  const q = text.trim().toLowerCase();
+  const show = res => {
+    row._gbif = res;
+    const el = row.querySelector('.gbif');
+    if (!el || row.querySelector('input').value.trim().toLowerCase() !== q) return;
+    if (res?.found) el.innerHTML = `<span class="tag ok small" title="GBIF: ${esc(res.scientificName)}${res.family ? ` (${esc(res.family)})` : ''}">🌿 real plant: ${esc(res.scientificName)}</span>`;
+    else if (res?.found === false) el.innerHTML = '<span class="tag bad small">Not found in the world plant database. Check the spelling.</span>';
+    else el.innerHTML = '';
+    refreshPreCheck();
+  };
+  row._gbif = plantCache[q];
+  if (plantCache[q]) return show(plantCache[q]);
+  clearTimeout(row._gbifTimer);
+  row._gbifTimer = setTimeout(async () => {
+    try { plantCache[q] = await (await fetch(`/api/plant?q=${encodeURIComponent(q)}`)).json(); }
+    catch { plantCache[q] = { offline: true }; }
+    show(plantCache[q]);
+  }, 500);
 }
 
 function readHistory() {
   const rows = [...document.querySelectorAll('.history-row')];
   const filled = rows.filter(r => r.querySelector('input').value.trim());
-  const unresolved = filled.filter(r => !r.dataset.crop);
+  const blocked = filled.filter(r => !r.dataset.crop || ['invalid', 'suggest'].includes(r.dataset.status) || (r.dataset.status === 'unknown' && r._gbif?.found === false && !r.dataset.group));
   return {
-    seasons: filled.filter(r => r.dataset.crop).map(r => ({ year: +r.dataset.year, label: r.querySelector('input').value.trim(), crop: r.dataset.crop })),
-    unresolved: unresolved.length,
+    // oldest first: the analysis reads the list in growing order
+    seasons: filled.filter(r => r.dataset.crop).map(r => ({ year: +r.dataset.year, label: r.querySelector('input').value.trim(), crop: r.dataset.crop }))
+      .sort((a, b) => a.year - b.year),
+    unresolved: blocked.length,
+    rows: rows.map(r => ({ year: +r.dataset.year, text: r.querySelector('input').value, status: r.dataset.status || 'empty', crop: r.dataset.crop || null,
+      suggestions: r._chk?.suggestions ?? [], reason: r._chk?.reason, gbif: r._gbif, groupGuess: r.dataset.group || null })),
   };
+}
+
+// The check list above the "Analyse" button
+function currentChecks() {
+  const situation = document.querySelector('[name=situation]:checked').value;
+  const mode = document.querySelector('[name=mode]:checked').value;
+  return V.preAnalysisChecks({ field: state.field, situation, rows: readHistory().rows, mode, focusCrop: $('focusCrop').value, crops: state.crops });
+}
+function refreshPreCheck(force) {
+  const box = $('preCheck');
+  if (!force && box.hidden) return;
+  const { checks } = currentChecks();
+  const icon = { ok: '✅', warn: '⚠️', error: '❌' };
+  box.hidden = false;
+  box.innerHTML = `<p class="small-label">Check before the analysis</p><ul>${checks.map(c => `<li class="${c.level}">${icon[c.level]} ${esc(c.text)}</li>`).join('')}</ul>`;
 }
 
 function fillPreset(list) {
   const crops = list ? list.split(',') : [];
   const rows = [...document.querySelectorAll('.history-row')];
-  rows.forEach((row, i) => {
-    // fill backwards from the most recent year so the pattern ends with the last crop in the list
-    const fromEnd = rows.length - 1 - i;
-    row.querySelector('input').value = crops.length ? crops[(crops.length - 1 - (fromEnd % crops.length))] : '';
+  rows.forEach(row => {
+    // this year gets the last crop in the list, earlier years walk back through the pattern
+    const ago = YEAR - +row.dataset.year;
+    row.querySelector('input').value = crops.length ? crops[crops.length - 1 - (ago % crops.length)] : '';
     row.querySelector('.resolved').innerHTML = '';
     resolveRow(row);
+    syncClear(row);
   });
+  refreshPreCheck();
 }
 
 // ================= PRIORITIES =================
 
+// The three priorities the challenge asks for come first: water, soil, market & machinery.
+const MAIN_PRIORITIES = [
+  { keys: ['water'], chip: '💧 Water', hint: 'Crops that get by on the rain your field actually gets' },
+  { keys: ['soil'], chip: '🌱 Soil', hint: 'Healthier soil: legumes, cover crops, less bare ground' },
+  { keys: ['market', 'machinery'], chip: '🚜 Market & machinery', hint: 'Easy to sell, works with the equipment you have' },
+];
+const DEFAULT_ON = ['water', 'soil', 'risk'];
+
 function renderPriorities() {
-  $('priorities').innerHTML = Object.entries(A.PRIORITIES).map(([k, p]) =>
-    `<label class="prio" title="${esc(p.hint)}"><input type="checkbox" value="${k}" ${k === 'water' || k === 'risk' ? 'checked' : ''}><b>${p.chip}</b><small>${p.hint}</small></label>`).join('');
+  $('prioritiesMain').innerHTML = MAIN_PRIORITIES.map(p =>
+    `<label class="prio big" title="${esc(p.hint)}"><input type="checkbox" value="${p.keys.join(',')}" ${p.keys.some(k => DEFAULT_ON.includes(k)) ? 'checked' : ''}><b>${p.chip}</b><small>${p.hint}</small></label>`).join('');
+  const inMain = MAIN_PRIORITIES.flatMap(p => p.keys);
+  $('priorities').innerHTML = Object.entries(A.PRIORITIES).filter(([k]) => !inMain.includes(k)).map(([k, p]) =>
+    `<label class="prio" title="${esc(p.hint)}"><input type="checkbox" value="${k}" ${DEFAULT_ON.includes(k) ? 'checked' : ''}><b>${p.chip}</b><small>${p.hint}</small></label>`).join('');
 }
 
 function priorityWeights() {
-  const chosen = [...document.querySelectorAll('#priorities input:checked')].map(i => i.value);
+  const chosen = [...document.querySelectorAll('#prioritiesMain input:checked, #priorities input:checked')].flatMap(i => i.value.split(','));
   // what you picked counts fully; everything else only a little, so your choice really decides
   return Object.fromEntries(Object.keys(A.PRIORITIES).map(k => [k, chosen.length ? (chosen.includes(k) ? 10 : 0.3) : 5]));
 }
@@ -162,22 +252,30 @@ const STEPS = [
   { id: 'sentinel', title: 'Scanning your field with satellites (5 years, every 10 days)', src: 'ESA Sentinel-2', missing: 'Bare soil, moisture and crop vigor checks will be missing.' },
   { id: 'soil', title: 'Soil type, organic carbon and pH', src: 'ISRIC SoilGrids', missing: 'Typical loam soil values will be used instead.' },
   { id: 'terrain', title: 'Slope and elevation', src: 'NASA SRTM', missing: 'Slope-based erosion advice will be missing.' },
+  { id: 'forecast', title: 'Weather forecast, next 7 days', src: 'ECMWF + DWD ICON', missing: 'Weather alerts and the forecast part of the season risk will be missing.' },
+  { id: 'radar', title: 'Radar check through clouds', src: 'ESA Sentinel-1', missing: 'Not needed: optical satellite data is used instead.', optional: true },
   { id: 'stress', title: 'Stress-testing every crop against every past season', src: 'FieldShift' },
-  { id: 'compare', title: 'Comparing rotation strategies', src: 'FieldShift' },
+  { id: 'predict', title: 'Predicting next season\'s risk (machine learning)', src: 'FieldShift model' },
+  { id: 'compare', title: 'Comparing 3 strategies, alerts and pest risk', src: 'FieldShift' },
+  { id: 'checks', title: 'Checking data and results', src: 'FieldShift' },
 ];
 const ICON = { waiting: '○', running: '◌', done: '✅', failed: '⚠️' };
 
-function setStep(id, status, { ms, error, backup } = {}) {
+function setStep(id, status, { ms, error, backup, cached, stale, ageMin } = {}) {
   const li = document.querySelector(`#steps li[data-id="${id}"]`);
   const s = STEPS.find(x => x.id === id);
+  if (!li || !s) return; // a step the server added that this page doesn't know
   li.className = status;
   li.querySelector('.icon').textContent = ICON[status];
   li.querySelector('.time').textContent = ms != null ? `${(ms / 1000).toFixed(1)} s` : status === 'running' ? 'working…' : '';
   const why = li.querySelector('.why');
   if (status === 'failed') why.textContent = `Couldn't get this data (${plainError(error)}). ${s.missing ?? ''}`;
   else if (backup) why.textContent = 'Live request failed, used the last saved copy.';
+  else if (cached) why.textContent = `${s.src} · loaded from cache${ageMin != null ? ` (${ageLabel(ageMin)} old)` : ''}${stale ? ', refreshing in the background' : ''}`;
   else why.textContent = s.src;
 }
+
+const ageLabel = m => (m < 60 ? `${Math.max(1, Math.round(m))} min` : m < 48 * 60 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`);
 
 function plainError(e = '') {
   if (/credentials|login|401|403/i.test(e)) return 'satellite login is not set up';
@@ -189,25 +287,30 @@ function plainError(e = '') {
 async function analyze() {
   const situation = document.querySelector('[name=situation]:checked').value;
   const history = readHistory();
-  if (situation === 'farm' && (!history.seasons.length || history.unresolved)) {
-    $('historyError').hidden = false;
-    $('historyError').textContent = history.unresolved
-      ? 'Pick the closest crop group for the crops we don\'t know yet.'
-      : 'Add at least one season, or choose "I\'m starting out".';
-    $('historyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  refreshPreCheck(true);
+  const pre = currentChecks();
+  if (!pre.ok || (situation === 'farm' && (!history.seasons.length || history.unresolved))) {
+    if (situation === 'farm' && (!history.seasons.length || history.unresolved)) {
+      $('historyError').hidden = false;
+      $('historyError').textContent = history.unresolved
+        ? 'Fix the crops marked in red or pick the closest crop group.'
+        : 'Add at least one season, or choose "I\'m starting out".';
+      $('historyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else $('preCheck').scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
-  if (state.field.areaHa > 2000) return;
   rememberField();
 
   state.situation = situation;
+  state.monitorId = null; state.checks = null;
+  $('monStatus').textContent = ''; $('monResult').innerHTML = '';
   state.history = history.seasons;
   state.weights = priorityWeights();
 
   $('start').hidden = true; $('progress').hidden = false; $('progressBack').hidden = true;
   $('progressField').textContent = `${state.placeName || 'Your field'} · ${areaTxt(state.field.areaHa)}`;
   $('progressNote').textContent = 'This usually takes 20–60 seconds. Satellite data takes the longest.';
-  $('steps').innerHTML = STEPS.map(s => `<li data-id="${s.id}" class="waiting"><span class="icon">${ICON.waiting}</span><span>${s.title}<span class="why">${s.src}</span></span><span class="time"></span></li>`).join('');
+  $('steps').innerHTML = STEPS.filter(s => !s.optional).map(s => `<li data-id="${s.id}" class="waiting"><span class="icon">${ICON.waiting}</span><span>${s.title}<span class="why">${s.src}</span></span><span class="time"></span></li>`).join('');
   window.scrollTo(0, 0);
 
   try {
@@ -222,7 +325,14 @@ async function analyze() {
       let nl;
       while ((nl = buf.indexOf('\n')) >= 0) {
         const msg = JSON.parse(buf.slice(0, nl)); buf = buf.slice(nl + 1);
-        if (msg.type === 'step') setStep(msg.id, msg.status, msg);
+        if (msg.type === 'step') {
+          // optional steps (e.g. radar) only appear when the server runs them
+          const s = STEPS.find(x => x.id === msg.id);
+          if (s?.optional && !document.querySelector(`#steps li[data-id="${msg.id}"]`)) {
+            document.querySelector('#steps li[data-id="stress"]').insertAdjacentHTML('beforebegin', `<li data-id="${s.id}" class="waiting"><span class="icon">${ICON.waiting}</span><span>${s.title}<span class="why">${s.src}</span></span><span class="time"></span></li>`);
+          }
+          setStep(msg.id, msg.status, msg);
+        }
         if (msg.type === 'result') result = msg.data;
       }
     }
@@ -230,14 +340,17 @@ async function analyze() {
     if (!result.climate.ok) throw new Error(`NASA climate data is required and couldn't be loaded (${plainError(result.climate.error)}).`);
     state.data = result;
 
-    let t = performance.now();
-    setStep('stress', 'running');
-    prepare();
-    setStep('stress', 'done', { ms: performance.now() - t });
-    t = performance.now();
-    setStep('compare', 'running');
-    renderAll();
-    setStep('compare', 'done', { ms: performance.now() - t });
+    const timed = async (id, fn) => {
+      const t = performance.now();
+      setStep(id, 'running');
+      await new Promise(r => setTimeout(r, 30)); // let the browser paint the step
+      fn();
+      setStep(id, 'done', { ms: performance.now() - t });
+    };
+    await timed('stress', prepare);
+    await timed('predict', predict);
+    await timed('compare', renderAll);
+    await timed('checks', renderChecks);
     $('progressNote').textContent = 'Done!';
     await new Promise(r => setTimeout(r, 700)); // let the farmer see everything finished
     $('progress').hidden = true; $('results').hidden = false; window.scrollTo(0, 0); watchSections();
@@ -306,10 +419,24 @@ function prepare() {
   state.ctx = {
     sum, soil, beginner, rotations, currentName, currentLabel, lastCrop, known, recent, field,
     terrain: d.terrain.ok ? d.terrain.data : null,
+    forecast: d.forecast?.ok ? d.forecast.data : null,
+    // weather models are reliable for about 7-10 days; alerts only use that part
+    forecastSure: d.forecast?.ok ? { ...d.forecast.data, days: d.forecast.data.days.slice(0, SURE_DAYS) } : null,
     cy: A.cropYears(d.climate.data, crops, soil.awcMm),
     cyFuture: A.cropYears(A.applyFuture(d.climate.data, sum, 2035), crops, soil.awcMm, d.climate.data),
     autumn: A.autumnCheck(recent, crops),
   };
+}
+
+// Machine-learning season risk (analog years); see ml.js
+function predict() {
+  const d = state.data, c = state.ctx;
+  try {
+    c.pred = ML.predictSeason({ climate: d.climate.data, cy: c.cy, crops: state.crops, recent: d.recent.ok ? d.recent.data : null, forecast: c.forecast });
+  } catch (err) {
+    console.error(err);
+    c.pred = { ok: false, reason: 'The prediction model could not run on this data.' };
+  }
 }
 
 function renderAll() {
@@ -328,8 +455,21 @@ function renderAll() {
   renderCharts();
   renderAdjust();
   renderOwnNumbers();
-  renderStrategies();
+  renderDecision();
   renderPastYears();
+  renderGuide();
+  setView(state.view);
+}
+
+// Everything that depends on the chosen strategy (re-run when priorities or prices change)
+function renderDecision() {
+  renderStrategies();
+  renderAlerts();
+  renderPrediction();
+  renderPests();
+  renderGlance();
+  renderMonitorPreview();
+  if (state.checks) renderChecks();
 }
 
 // Year-by-year check: lets you compare the model with real yields for a specific year
@@ -413,7 +553,7 @@ function renderAdjust() {
   document.querySelectorAll('[data-w]').forEach(s => s.addEventListener('input', () => {
     s.nextElementSibling.textContent = s.value;
     state.weights[s.dataset.w] = +s.value;
-    renderStrategies();
+    renderDecision();
   }));
 }
 
@@ -433,18 +573,47 @@ function renderOwnNumbers(names) {
     if (!(v >= 0)) return;
     const o = (state.overrides[inp.dataset.crop] ??= {});
     if (inp.dataset.own === 'yield') o.yieldTHa = yieldFromUi(v); else o.priceEurT = v;
-    renderStrategies();
+    renderDecision();
   }));
-  $('resetOwn').addEventListener('click', () => { state.overrides = {}; renderOwnNumbers(); renderStrategies(); });
+  $('resetOwn').addEventListener('click', () => { state.overrides = {}; renderOwnNumbers(); renderDecision(); });
 }
 
 const VERDICT_ORDER = { better: 0, now: 1, similar: 2, worse: 3 };
+
+// The evidence for one strategy, each line with the dataset it comes from
+function strategyData(p, current, e) {
+  const c = state.ctx, n = c.cy.years.length;
+  const ok = (cy, crop) => cy.rows.filter(r => r.crop === crop && r.ok).length;
+  const out = [`<b>NASA POWER</b>, ${n} seasons of rain and temperature on this field: good seasons ${p.unique.map(x => `${esc(x)} ${ok(c.cy, x)}/${n}`).join(' · ')}.`];
+  out.push(`<b>NASA POWER trend</b> (${c.sum.tempTrendDecade >= 0 ? '+' : ''}${c.sum.tempTrendDecade.toFixed(1)} °C per decade): good seasons ${r0(p.risk)}% today → ~${r0(p.riskFuture)}% by 2035.`);
+  out.push(`<b>NASA POWER</b>: ${c.sum.droughtYearsRecent} of the last 10 summers were drought summers here; this rotation needs ~${r0(p.waterDemand)} mm of water a year.`);
+  if (c.field?.bareDays != null) out.push(`<b>ESA Sentinel-2</b>: your field was bare ~${c.field.bareDays} days in the last 12 months; this rotation leaves ~${p.bare.toFixed(1)} bare months a year${p.rotation !== current.rotation ? ` (now ${current.bare.toFixed(1)})` : ''}.`);
+  else out.push(`<b>Bare soil</b>: ~${p.bare.toFixed(1)} bare months a year (from sowing and harvest dates; no satellite data for this field).`);
+  if (!c.soil.isDefault) out.push(`<b>ISRIC SoilGrids</b>: ${c.soil.texture.toLowerCase()} soil, organic carbon ${c.soil.socGKg.toFixed(1)} g/kg${p.legumes.length ? `; ${p.legumes.join(', ')} add${p.legumes.length === 1 ? 's' : ''} nitrogen (~${money(p.nSavedEur)} fertilizer saved a year)` : ''}.`);
+  if (c.terrain) out.push(`<b>NASA SRTM</b>: slope ${c.terrain.slopePct.toFixed(1)}%${c.terrain.slopePct > 3 ? ', so soil cover against erosion matters' : ''}.`);
+  const pr = c.pred?.ok ? c.pred.byCrop[p.mains[0]] : null;
+  if (pr) out.push(`<b>FieldShift model</b> (NASA POWER + forecast): chance of a good ${c.pred.harvestYear} season for ${esc(p.mains[0])}: ${r0(pr.p * 100)}% (usually ${r0(pr.base * 100)}%).`);
+  return out;
+}
+
+// What the data can't tell us about this strategy
+function strategyGaps(p, e) {
+  const c = state.ctx, out = [];
+  out.push('Yields and prices are regional estimates: enter your own under "Use your own yields and prices".');
+  if (!c.field) out.push('No satellite history for this field, so bare soil and crop growth come from typical dates.');
+  if (c.soil.isDefault) out.push('Soil data was unavailable; typical loam soil was assumed.');
+  if (e.newCrops.length) out.push(`Buyers and machinery for ${e.newCrops.join(', ')} near you are not checked.`);
+  out.push('Weather is a ~50 km grid, not a station on your field.');
+  return out;
+}
 
 function renderStrategies() {
   const c = state.ctx, crops = effectiveCrops(), weights = state.weights;
   const ranked = A.scoreRotations({ rotations: c.rotations, crops, cy: c.cy, cyFuture: c.cyFuture, soil: c.soil, field: c.field, weights, known: c.known });
   const focus = document.querySelector('[name=mode]:checked').value === 'crop' ? $('focusCrop').value : null;
-  const picks = A.pickStrategies(ranked, c.currentName, focus, c.currentLabel);
+  // the challenge: the current rotation (baseline) + exactly 2 new strategies
+  const picks = A.pickStrategies(ranked, c.currentName, focus, c.currentLabel).slice(0, 3);
+  state.picks = picks;
   const current = ranked.find(r => r.rotation === c.currentName);
   // the suggestion: an option that is clearly better for the farmer (see A.verdict), best one first
   const others = picks.filter(p => p.rotation !== c.currentName)
@@ -454,6 +623,12 @@ function renderStrategies() {
   const mono = current.mains.every(m => m === current.mains[0]) && !crops.find(x => x.crop === current.mains[0]).perennial;
   const keep = !c.beginner && !mono && A.verdict(best, current).key !== 'better';
   const n = c.cy.years.length;
+  const sugPlan = (keep || !best ? current : best).plan;
+  c.nextItem = A.nextCrop(sugPlan, c.lastCrop, crops);
+  c.nextCrop = c.nextItem.split('+').at(-1);
+  c.suggestion = keep || !best ? current : best;
+  // crops that matter for alerts and pests: the next crop first, then the rest of the suggested rotation
+  c.fieldCrops = [...new Set([c.nextCrop, ...c.suggestion.mains].filter(Boolean))];
 
   // ---- answer card
   const sug = keep || !best ? current : best; // the rotation the answer card recommends
@@ -512,25 +687,38 @@ function renderStrategies() {
       return `<tr><td>${label}</td>${picks.map(p => `<td class="${dir && val(p) === target ? 'best' : ''}">${fmt(p)}</td>`).join('')}</tr>`;
     }).join('');
 
-  // ---- compact strategy cards, details folded away
+  // ---- 3 strategy cards: why we suggest it, NASA/ESA data behind it, benefits, risks and data gaps
   const ctx = { crops, cy: c.cy, field: c.field, soil: c.soil, terrain: c.terrain, sum: c.sum, weights, known: c.known, beginner: c.beginner, money };
   const allNew = new Set();
-  $('strategies').innerHTML = picks.map(p => {
+  const letters = ['A', 'B', 'C'];
+  const chosenLabels = Object.entries(weights).filter(([, w]) => w >= 5).map(([k]) => A.PRIORITIES[k].chip);
+  $('prioLine').innerHTML = chosenLabels.length ? `Ranked by what matters to you: ${chosenLabels.map(x => `<span class="chip-static">${esc(x)}</span>`).join(' ')}` : '';
+  $('strategies').innerHTML = picks.map((p, i) => {
     const e = A.explainStrategy(p, current, ctx);
     e.newCrops.forEach(x => allNew.add(x));
     const v = A.verdict(p, current);
-    return `<div class="strategy ${p.rotation === c.currentName ? 'current' : ''}">
-      <div class="head"><span class="kind">${p.label}</span>${v.key === 'now' ? '' : `<span class="chip ${v.key}">${v.text}</span>`}</div>
+    const isCur = p.rotation === c.currentName;
+    const data = strategyData(p, current, e);
+    const gaps = strategyGaps(p, e);
+    const benefits = isCur ? [c.beginner ? 'The most common rotation in Bulgaria: machinery, seed and buyers are easy to find.' : 'No switching costs: you know these crops, have the machinery and the buyers.'] : e.benefits;
+    const topRisk = e.risks[0] ?? gaps[0];
+    return `<article class="strategy ${isCur ? 'current' : ''}">
+      <div class="head"><span class="kind">Strategy ${letters[i]} · ${esc(isCur ? (c.beginner ? 'Typical rotation (baseline)' : 'Your rotation now (baseline)') : p.label)}</span>${v.key === 'now' ? '' : `<span class="chip ${v.key}">${v.text}</span>`}</div>
       <h3>${esc(p.rotation.replace(/^Your rotation: /, ''))}</h3>
       <div class="facts"><div class="fact"><span>Good seasons</span><b>${r0(p.risk)}%</b></div>
         <div class="fact"><span>Normal year</span><b>${money(p.profitNormal)}</b></div>
         <div class="fact"><span>Bad year</span><b>${money(p.profitBad)}</b></div></div>
-      <p>${e.why}</p>
-      <details><summary>Why, evidence and risks</summary>
-        ${e.benefits.length ? `<h4>What changes</h4>${list(e.benefits)}` : ''}
-        <h4>Evidence</h4>${list(e.evidence)}
-        ${e.risks.length ? `<h4>Check locally</h4>${list(e.risks)}` : ''}
-      </details></div>`;
+      <div class="simple-only strat-simple">
+        <p>${e.why}</p>
+        ${!isCur && benefits[0] ? `<p class="plus">➕ ${benefits[0]}</p>` : ''}
+        ${topRisk ? `<p class="minus">➖ ${topRisk}</p>` : ''}
+      </div>
+      <div class="detail-only strat-sections">
+        <section><h4>🎯 Why we suggest it</h4><p>${e.why}</p></section>
+        <section><h4>🛰️ NASA &amp; ESA data behind it</h4>${list(data)}</section>
+        <section><h4>✅ Benefits</h4>${list(benefits)}</section>
+        <section><h4>⚠️ Risks and gaps in the data</h4>${list([...e.risks, ...gaps])}</section>
+      </div></article>`;
   }).join('');
   $('gaps').innerHTML = A.infoGaps({ field: c.field, soil: c.soil, weights, newCrops: [...allNew] }).map(g => `<li>${g}</li>`).join('');
 
@@ -540,6 +728,265 @@ function renderStrategies() {
       .sort((a, b) => VERDICT_ORDER[a.v.key] - VERDICT_ORDER[b.v.key] || b.r.score - a.r.score)
       .map(({ r, v }, i) => `<tr><td>${i + 1}</td><td>${esc(r.rotation.replace(/^Your rotation: /, 'Yours: '))}</td><td><span class="chip ${v.key}">${v.key === 'now' && c.beginner ? 'Typical rotation' : v.text}</span></td>` +
       `<td>${r0(r.risk)}%</td><td>${money(r.profitNormal)}</td><td>${money(r.profitBad)}</td><td>${r.bare.toFixed(1)}</td></tr>`).join('');
+}
+
+// ================= ALERTS =================
+
+const ALERT_ICON = { hail: '🧊', flood: '🌊', drought: '☀️', frost: '❄️', heat: '🔥', wind: '💨', storm: '⛈️', pest: '🐛', disease: '🍄', vegetation: '🛰️', nutrient: '🧪' };
+const CHANNEL = { call: '📞 call', sms: '💬 SMS', app: '📱 app' };
+
+function computeAlerts() {
+  const c = state.ctx, d = state.data;
+  try {
+    return AL.buildAlerts({ forecast: c.forecastSure, sentinel: d.sentinel.ok ? d.sentinel.data : null, crops: c.fieldCrops, pests: state.pests, recent: c.recent });
+  } catch (err) { console.error('alerts', err); return []; }
+}
+
+// Why the forecast is missing, in words (also printed in the browser console for debugging)
+function forecastProblem() {
+  const f = state.data.forecast;
+  if (!f) return 'this server is an older version without forecasts: stop it and run npm start again';
+  if (f.issues?.length) return `data check failed: ${f.issues.join('; ')}`;
+  console.warn('Forecast failed:', f.error);
+  return plainError(f.error);
+}
+
+function renderAlerts() {
+  const c = state.ctx;
+  c.alerts = computeAlerts();
+  const al = c.alerts, L = AL.LEVELS;
+  const major = al.filter(a => a.level === 'urgent' || a.level === 'warning');
+  const minor = al.length - major.length;
+  const item = a => `<div class="alert lvl-${a.level}${a.level === 'urgent' || a.level === 'warning' ? '' : ' detail-only'}">
+      <span class="badge">${L[a.level].label}<small>${L[a.level].labelBg}</small></span>
+      <div><h3>${ALERT_ICON[a.type] ?? '⚠️'} ${esc(a.title)}</h3><p>${esc(a.text)}</p>${a.action ? `<p class="action">👉 ${esc(a.action)}</p>` : ''}
+      <span class="src">${esc(a.when ?? '')} · ${esc(a.source ?? '')} · sent by ${(a.channels ?? L[a.level].channels).map(x => CHANNEL[x]).join(', ')}</span></div></div>`;
+  $('alertsSec').innerHTML = `<h2>🚨 Alerts for your field</h2>
+    <p class="muted">Next ${SURE_DAYS} days of weather, the latest satellite image of your field and pest risk for ${c.fieldCrops.map(esc).join(', ')}.</p>
+    ${c.forecast ? '' : `<p class="insight warn">The weather forecast could not be loaded, so hail, frost, rain and pest-weather alerts are missing. <small>(${esc(forecastProblem())})</small></p>`}
+    ${major.length ? '' : '<p class="insight good">✅ No urgent alerts or warnings right now.</p>'}
+    <div class="alerts">${al.map(item).join('')}</div>
+    ${minor ? `<p class="muted simple-only">+ ${minor} recommendation${minor > 1 ? 's' : ''} and info in the <button class="link-btn inline" data-view="detailed">detailed view</button>.</p>` : ''}
+    <details class="adjust-wrap detail-only"><summary>What the 4 alert levels mean</summary>
+      <table class="levels"><tr><th>Level</th><th>When</th><th>How you're told</th></tr>
+      <tr><td><span class="badge-s lvl-urgent">${L.urgent.label} · ${L.urgent.labelBg}</span></td><td>Act within hours: hail, flooding, hard frost, severe heat or a sudden crop collapse seen from space</td><td>${L.urgent.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
+      <tr><td><span class="badge-s lvl-warning">${L.warning.label} · ${L.warning.labelBg}</span></td><td>Plan in the next days: drought, strong wind, pest outbreak weather, crop stress</td><td>${L.warning.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
+      <tr><td><span class="badge-s lvl-advice">${L.advice.label} · ${L.advice.labelBg}</span></td><td>Good to do: scout for a pest, adjust fertiliser, sowing advice</td><td>${L.advice.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr>
+      <tr><td><span class="badge-s lvl-info">${L.info.label} · ${L.info.labelBg}</span></td><td>For your information: thunderstorms, seasonal notes</td><td>${L.info.channels.map(x => CHANNEL[x]).join(' + ')}</td></tr></table>
+    </details>
+    ${c.forecast ? `<details class="adjust-wrap detail-only"><summary>Weather forecast, next ${SHOW_DAYS} days</summary><div class="chart"><canvas id="forecastChart"></canvas></div><p class="muted">${esc(c.forecast.source ?? 'Open-Meteo')}, for your field's exact location. ECMWF and DWD ICON are the two most accurate weather models for Europe; hail and wind take the worse of the two.</p></details>` : ''}`;
+  if (c.forecast && window.Chart) {
+    const days = c.forecast.days.slice(0, SHOW_DAYS);
+    const fade = (col, faded) => days.map((_, i) => (i < SURE_DAYS ? col : faded));
+    drawChart('forecastChart', { type: 'bar', data: { labels: days.map(x => x.date.slice(5)), datasets: [
+      { label: 'Rain (mm)', data: days.map(x => x.rainMm), backgroundColor: fade('#2f6690', 'rgba(47,102,144,.3)'), borderRadius: 3, yAxisID: 'y1' },
+      { label: 'Max °C', data: days.map(x => x.tMax), type: 'line', borderColor: '#9e3b2e', pointBackgroundColor: fade('#9e3b2e', '#fff'), pointRadius: 2, yAxisID: 'y', segment: { borderDash: ctx => (ctx.p1DataIndex >= SURE_DAYS ? [4, 4] : undefined) } },
+      { label: 'Min °C', data: days.map(x => x.tMin), type: 'line', borderColor: '#2f6b3a', pointBackgroundColor: fade('#2f6b3a', '#fff'), pointRadius: 2, yAxisID: 'y', segment: { borderDash: ctx => (ctx.p1DataIndex >= SURE_DAYS ? [4, 4] : undefined) } },
+    ] }, options: { scales: { y: { position: 'left', title: { display: true, text: '°C' } }, y1: { position: 'right', min: 0, suggestedMax: 10, grid: { display: false }, title: { display: true, text: 'rain, mm' } } } } });
+  }
+  bindViewButtons($('alertsSec'));
+}
+
+// ================= SEASON RISK (machine learning) =================
+
+function renderPrediction() {
+  const c = state.ctx, pred = c.pred, box = $('predictSec');
+  if (!pred?.ok) {
+    box.innerHTML = `<h2>📈 Season risk</h2><p class="muted">${esc(pred?.reason ?? 'Not available.')}</p>`;
+    return;
+  }
+  const crop = c.nextCrop;
+  const weatherAlerts = (c.alerts ?? []).filter(a => !['pest', 'disease'].includes(a.type));
+  const rs = ML.riskScore(pred, crop, weatherAlerts);
+  const m = pred.byCrop[crop];
+  const word = { low: 'Low', medium: 'Medium', high: 'High' };
+  const similar = m.analogs.slice(0, 3).map(a => a.year);
+  const goodOf = m.analogs.filter(a => a.ok).length;
+  const ev = pred.eval;
+  const rows = [...new Set([...c.fieldCrops, ...c.suggestion.mains, ...pred.perCrop.slice(0, 5).map(x => x.crop)])].map(x => pred.byCrop[x]).filter(Boolean);
+  box.innerHTML = `<h2>📈 Season risk for ${pred.harvestYear}</h2>
+    <p class="muted">A machine-learning model compares this season so far with the last ${pred.nYears} seasons on your field${pred.usedForecast ? ' (including the next 7 days of forecast)' : ''}.</p>
+    <div class="risk-gauge lvl-${rs.level}">
+      <div class="score"><b>${rs.score}</b><span>/100</span></div>
+      <div><p class="big">${word[rs.level]} risk for <b>${esc(crop)}</b> (harvest ${pred.harvestYear})</p>
+        <div class="bar"><i style="width:${rs.score}%"></i></div>
+        <p>Chance of a good season: <b>${r0(m.p * 100)}%</b> (in an average year: ${r0(m.base * 100)}%). This season so far looks most like <b>${similar.join(', ')}</b>; ${goodOf} of the ${m.analogs.length} most similar seasons ended well for ${esc(crop)}.${weatherAlerts.some(a => a.level === 'urgent' || a.level === 'warning') ? ' Active weather alerts raise the risk.' : ''}</p></div>
+    </div>
+    <div class="detail-only">
+      <h3 class="sub">What the model sees this season</h3>${list(pred.features.map(esc))}
+      <h3 class="sub">Chance of a good season by crop</h3>
+      <div class="table-wrap"><table><tr><th>Crop</th><th>This season</th><th>Average year</th><th>Change</th><th>Risk</th><th>Most similar past seasons (✓ good, ✗ bad)</th></tr>
+      ${rows.map(x => `<tr><td>${esc(x.crop)}</td><td>${r0(x.p * 100)}%</td><td>${r0(x.base * 100)}%</td><td class="${x.shift < -0.05 ? 'mismatch' : x.shift > 0.05 ? 'ok' : ''}">${x.shift >= 0 ? '+' : ''}${r0(x.shift * 100)}</td><td><span class="chip ${x.level === 'low' ? 'better' : x.level === 'high' ? 'worse' : 'similar'}">${word[x.level]}</span></td>
+        <td class="analogs">${x.analogs.slice(0, 6).map(a => `<span class="${a.ok ? 'ok' : 'bad'}">${a.year} ${a.ok ? '✓' : '✗'}</span>`).join(' ')}</td></tr>`).join('')}</table></div>
+      <h3 class="sub">How good is the model? (retrospective test)</h3>
+      <p>Every one of ${ev.tests} past crop-seasons was predicted from the other years only (leave-one-out). Right <b>${r0(ev.accuracy * 100)}%</b> of the time, vs ${r0(ev.baseAccuracy * 100)}% when you just assume an average year. Brier skill score ${ev.skill >= 0 ? '+' : ''}${ev.skill.toFixed(2)} (above 0 = better than the long-term average).</p>
+      <div class="table-wrap"><table><tr><th>Predicting in</th>${pred.backtest.map(b => `<th>${b.month}</th>`).join('')}</tr>
+        <tr><td>Right</td>${pred.backtest.map(b => `<td>${r0(b.accuracy * 100)}%</td>`).join('')}</tr>
+        <tr><td>Skill vs average</td>${pred.backtest.map(b => `<td class="${b.skill > 0.05 ? 'ok' : ''}">${b.skill >= 0 ? '+' : ''}${b.skill.toFixed(2)}</td>`).join('')}</tr></table></div>
+      <p class="muted">Honest reading: in autumn the model is only a little better than the long-term average, because next summer's rain is still unknown. It gets clearly better through winter and spring as the soil fills up (or doesn't). Method: analog-year k-nearest neighbours (k = ${pred.k}) on rain before sowing, rain since October and temperature, labels from the NASA POWER stress test.</p>
+    </div>`;
+}
+
+// ================= PESTS, DISEASES AND FERTILIZER =================
+
+function renderPests() {
+  const c = state.ctx, db = state.pests, box = $('pestsSec');
+  if (!db) { box.innerHTML = '<h2>🐛 Pests, diseases and fertilizer</h2><p class="muted">Pest information could not be loaded.</p>'; return; }
+  const now = new Date().getMonth() + 1;
+  const soon = [0, 1, 2, 3, 4, 5].map(i => (now - 1 + i) % 12 + 1);
+  const crops = c.fieldCrops.filter(x => db.crops[x]);
+  const months = ms => A.MONTHS.length && ms.map(m => A.MONTHS[m - 1]).join(', ');
+  const nameOf = p => `${esc(p.name)}${p.nameBg ? ` <span class="bg">(${esc(p.nameBg)})</span>` : ''}`;
+  const typeIcon = { insect: '🐛', mite: '🕷️', disease: '🍄', weed: '🌿', 'parasitic-plant': '🌿', nematode: '🪱', rodent: '🐭', slug: '🐌' };
+  // the next ones to watch: active in the coming months, most dangerous first
+  const watch = crops.flatMap(cr => db.crops[cr].pests.filter(p => p.months.some(m => soon.includes(m))).map(p => ({ ...p, crop: cr })))
+    .sort((a, b) => soon.indexOf(a.months.find(m => soon.includes(m))) - soon.indexOf(b.months.find(m => soon.includes(m))) || b.severity - a.severity).slice(0, 4);
+  const pestAlerts = (c.alerts ?? []).filter(a => a.type === 'pest' || a.type === 'disease');
+  const n = c.suggestion;
+  // fertilizer: needs of the next crop, minus nitrogen left by a legume before it, adjusted for the soil
+  const next = db.crops[c.nextCrop];
+  const prevLegume = state.crops.find(x => x.crop === c.lastCrop)?.legume;
+  const nCredit = prevLegume ? state.crops.find(x => x.crop === c.lastCrop).nFixedKgHa : 0;
+  const fert = next?.nutrients;
+  const soilNotes = [];
+  if (!c.soil.isDefault && c.soil.socGKg < 10) soilNotes.push('Low organic carbon: the soil releases less nitrogen on its own, so don\'t cut nitrogen below the plan.');
+  if (!c.soil.isDefault && c.soil.ph < 5.8) soilNotes.push(`Acidic soil (pH ${c.soil.ph.toFixed(1)}): phosphorus is locked up; liming helps more than extra fertilizer.`);
+  if (!c.soil.isDefault && c.soil.ph > 7.8) soilNotes.push(`Alkaline soil (pH ${c.soil.ph.toFixed(1)}): watch for zinc and iron shortage, especially in corn.`);
+  if (c.soil.texture === 'Sandy') soilNotes.push('Sandy soil: nitrogen washes out after heavy rain; split it into 2–3 smaller doses.');
+  const nutrientAlert = (c.alerts ?? []).find(a => a.type === 'nutrient');
+  box.innerHTML = `<h2>🐛 Pests, diseases and fertilizer</h2>
+    <p class="muted">What to watch for ${crops.map(esc).join(', ')} in the coming months, and what to do. Always use products registered by БАБХ and follow the label.</p>
+    ${pestAlerts.length ? `<p class="insight warn">The forecast weather favours ${pestAlerts.map(a => esc(a.title)).join('; ')}. See the alerts above.</p>` : ''}
+    <div class="pest-cards">${watch.length ? watch.map(p => `<div class="pest sev-${p.severity}">
+      <h3>${typeIcon[p.type] ?? '🐛'} ${nameOf(p)}</h3><p class="muted">${esc(p.crop)} · ${months(p.months)}${p.severity === 3 ? ' · can destroy the crop' : ''}</p>
+      <p><b>You'll see:</b> ${esc(p.signs)}</p><p><b>Do:</b> ${esc(p.action)}</p>
+      <p class="detail-only"><b>Check:</b> ${esc(p.scout)}</p>${p.satellite ? `<p class="detail-only muted">🛰️ ${esc(p.satellite)}</p>` : ''}</div>`).join('') : '<p>Nothing major to watch in the coming months.</p>'}</div>
+    ${fert ? `<h3 class="sub">🧪 Fertilizer for ${esc(c.nextCrop)}</h3>
+      <div class="facts nutrients"><div class="fact"><span>Nitrogen N</span><b>${Math.max(0, fert.N - nCredit)} kg/ha</b></div><div class="fact"><span>Phosphorus P₂O₅</span><b>${fert.P2O5} kg/ha</b></div><div class="fact"><span>Potassium K₂O</span><b>${fert.K2O} kg/ha</b></div></div>
+      <p class="muted">Typical need for a normal yield${nCredit ? `, minus ~${nCredit} kg N/ha left by ${esc(c.lastCrop)}` : ''}. ${esc(fert.note ?? '')} A soil test every 4–5 years tells you the real numbers.</p>
+      ${soilNotes.length ? list(soilNotes.map(esc)) : ''}
+      ${nutrientAlert ? `<p class="insight warn">🛰️ ${esc(nutrientAlert.text)}</p>` : ''}` : ''}
+    <details class="adjust-wrap detail-only"><summary>All pests and diseases for your crops</summary>
+      ${crops.map(cr => `<h4>${esc(cr)}</h4><div class="table-wrap"><table class="pest-table"><tr><th>Pest / disease</th><th>When</th><th>Signs</th><th>Check (threshold)</th><th>What to do</th></tr>
+        ${db.crops[cr].pests.map(p => `<tr><td>${typeIcon[p.type] ?? ''} ${nameOf(p)}<br><small><i>${esc(p.latin ?? '')}</i></small></td><td>${months(p.months)}</td><td>${esc(p.signs)}</td><td>${esc(p.scout)}</td><td>${esc(p.action)}</td></tr>`).join('')}</table></div>`).join('')}
+    </details>
+    <details class="adjust-wrap detail-only"><summary>Nutrient shortage: signs in the field and from space</summary>
+      <div class="table-wrap"><table><tr><th>Nutrient</th><th>Signs</th><th>From space</th><th>Likely when</th><th>Fix</th></tr>
+      ${db.deficiencies.map(x => `<tr><td><b>${esc(x.nutrient)}</b> ${esc(x.name)} <span class="bg">(${esc(x.nameBg ?? '')})</span></td><td>${esc(x.signs)}</td><td>${esc(x.satellite)}</td><td>${esc(x.likelyWhen ?? '')}</td><td>${esc(x.fix)}</td></tr>`).join('')}</table></div>
+      <p class="muted">Sources: ${(db.sources ?? []).map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(' · ')}</p>
+    </details>`;
+}
+
+// ================= AT A GLANCE (simple view) =================
+
+function renderGlance() {
+  const c = state.ctx;
+  const tiles = [];
+  const add = (level, icon, label, value, note, href) => tiles.push(`<a class="tile lvl-${level}" href="#${href}"><span class="ico">${icon}</span><span class="label">${label}</span><b>${value}</b><small>${note}</small></a>`);
+  const al = c.alerts ?? [];
+  const urgent = al.filter(a => a.level === 'urgent').length, warn = al.filter(a => a.level === 'warning').length;
+  add(urgent ? 'bad' : warn ? 'warn' : 'good', '🚨', 'Alerts', urgent ? `${urgent} urgent` : warn ? `${warn} warning${warn > 1 ? 's' : ''}` : 'None', urgent || warn ? al.find(a => a.level === (urgent ? 'urgent' : 'warning')).title : 'Nothing to act on now', 'alertsSec');
+  if (c.recent) {
+    const p = c.recent.last3Pct;
+    add(p < -25 ? 'bad' : p < -10 ? 'warn' : 'good', '💧', 'Water, last 3 months', p < -10 ? 'Drier than normal' : p > 10 ? 'Wetter than normal' : 'About normal', `${p >= 0 ? '+' : ''}${r0(p)}% rain vs normal`, 'insightsSec');
+  }
+  if (c.pred?.ok) {
+    const rs = ML.riskScore(c.pred, c.nextCrop, al.filter(a => !['pest', 'disease'].includes(a.type)));
+    add(rs.level === 'high' ? 'bad' : rs.level === 'medium' ? 'warn' : 'good', '📈', `Season risk, ${c.nextCrop}`, `${rs.score}/100`, `${r0(rs.model.p * 100)}% chance of a good ${c.pred.harvestYear} season`, 'predictSec');
+  }
+  const pests = state.pests?.crops[c.nextCrop]?.pests ?? [];
+  const pestAl = al.filter(a => a.type === 'pest' || a.type === 'disease').length;
+  add(pestAl ? 'warn' : 'good', '🐛', 'Pests', pestAl ? `${pestAl} to check` : 'Quiet', pestAl ? 'Weather favours an outbreak' : `${pests.length} known pests of ${c.nextCrop}, see when to check`, 'pestsSec');
+  if (!c.soil.isDefault) add(c.soil.socGKg < 10 ? 'warn' : 'good', '🌱', 'Soil', `${c.soil.texture}`, `organic carbon ${c.soil.socGKg < 10 ? 'low' : 'OK'}, holds ~${c.soil.awcMm} mm water`, 'pestsSec');
+  $('glance').innerHTML = tiles.join('');
+}
+
+// ================= CHECKS =================
+
+function renderChecks() {
+  const res = V.resultChecks({ data: state.data, ctx: state.ctx, strategies: state.picks ?? [], prediction: state.ctx.pred });
+  state.checks = res;
+  const groups = [...new Set(res.checks.map(x => x.group))];
+  const icon = ok => (ok ? '✅' : ok === false ? '❌' : '➖');
+  $('checksSec').innerHTML = `<h2>${res.failed ? '⚠️' : '✅'} Data and result checks: ${res.passed} of ${res.total} passed</h2>
+    <p class="muted">Every data source is checked for missing or impossible values, and the results for consistency, before you see them.${res.failed ? ' Something failed: treat the numbers with extra care.' : ''}</p>
+    <div class="detail-only checks">${groups.map(g => `<h3 class="sub">${g}</h3><ul>${res.checks.filter(x => x.group === g).map(x => `<li>${icon(x.ok)} ${esc(x.text)}</li>`).join('')}</ul>`).join('')}</div>`;
+}
+
+// ================= HOW TO READ THIS =================
+
+function renderGuide() {
+  const item = (t, d, detail) => `<div class="${detail ? 'detail-only' : ''}"><dt>${t}</dt><dd>${d}</dd></div>`;
+  $('guideSec').innerHTML = `<h2>📖 How to read your results</h2>
+    <p class="muted">What each part shows and how to use it.</p>
+    <dl class="guide">
+      ${item('🌾 Our suggestion', 'The one thing to do next: which crop to sow and when, with the main reasons and risk.')}
+      ${item('🚨 Alerts', 'Things that need action soon. <b>URGENT</b> = act within hours (you also get a call + SMS). <b>WARNING</b> = plan in the next days (SMS). <b>RECOMMENDATION</b> and <b>INFO</b> = good to know (in the app).')}
+      ${item('🅰️🅱️🅲 3 strategies', 'A is what you do now (the baseline). B and C are new rotations. Compare the three numbers on each card.')}
+      ${item('✅ Good seasons', 'Out of the last 24 years, how many had enough rain and no damaging heat for these crops on your field. Higher is safer.')}
+      ${item('💶 Normal year / bad year', 'Profit per decare after typical costs, before rent and subsidies. "Bad year" is about 1 year in 10. A minus means you lose money that year.')}
+      ${item('📈 Season risk', '0–100: how risky the coming season looks for your next crop, from comparing this season so far with similar past seasons. Below 30 is low, above 60 is high.')}
+      ${item('🐛 Pests and fertilizer', 'The pests and diseases to watch in the coming months, what you\'ll see, what to do, and how much fertilizer the next crop needs.')}
+      ${item('🟢 Greenness (NDVI)', 'From Sentinel-2: 0 = bare soil, 0.3 = young or stressed crop, 0.7+ = dense healthy crop. A sudden drop compared with other years can mean pests, disease, lack of nitrogen or drought.', true)}
+      ${item('🔵 Moisture (NDMI)', 'Water in the plants and topsoil. If greenness drops and moisture drops too, it\'s drought; if moisture is normal, look for pests, disease or nutrients.', true)}
+      ${item('🟫 Bare soil', 'Days without plant cover. Bare soil loses water and topsoil; cover crops reduce it.', true)}
+      ${item('🌡️ By 2035', 'The same test with the measured warming and rain trend continued to 2035. A projection, not a forecast.', true)}
+      ${item('🎯 Model skill', 'How the season-risk model did on past years it hadn\'t seen. Above 0 means it beats just assuming an average year.', true)}
+      ${item('✔️ Data checks', 'Every source is checked for missing or impossible values. If a check fails, that number is less reliable.')}
+    </dl>`;
+}
+
+// ================= SIMPLE / DETAILED VIEW =================
+
+const VIEW_KEY = 'fieldshift.view';
+state.view = (() => { try { return localStorage.getItem(VIEW_KEY) || 'simple'; } catch { return 'simple'; } })();
+function setView(v) {
+  state.view = v;
+  try { localStorage.setItem(VIEW_KEY, v); } catch { /* optional */ }
+  document.body.classList.toggle('view-simple', v === 'simple');
+  document.body.classList.toggle('view-detailed', v === 'detailed');
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v));
+  Object.values(charts).forEach(ch => ch.resize?.());
+}
+function bindViewButtons(root = document) {
+  root.querySelectorAll('[data-view]').forEach(b => { b.onclick = () => { setView(b.dataset.view); if (!b.classList.contains('view-btn')) window.scrollTo({ top: 0, behavior: 'smooth' }); }; });
+}
+
+// ================= PHONE ALERTS =================
+
+async function subscribe(e) {
+  e.preventDefault();
+  const c = state.ctx, status = $('monStatus');
+  const phone = $('monPhone').value.replace(/[\s\-()/]/g, '');
+  if (!/^(\+|00)?\d{9,14}$/.test(phone)) { status.textContent = '❌ Please enter a valid mobile number, e.g. 0888 123 456 or +359 888 123 456.'; return; }
+  status.textContent = 'Turning on alerts…';
+  try {
+    const res = await fetch('/api/monitor', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: state.placeName || 'My field', geometry: state.data.geometry, phone, crops: c.fieldCrops, minLevel: $('monLevel').value }) });
+    const j = await res.json();
+    if (!res.ok || j.error) throw new Error(j.error || res.status);
+    state.monitorId = j.id;
+    status.innerHTML = `✅ Alerts are on for <b>${esc(j.phoneMasked ?? phone)}</b>. We check your field every 6 hours.`;
+    renderMonitorPreview();
+  } catch (err) { status.textContent = `❌ Could not turn on alerts: ${err.message}`; }
+}
+
+// What the farmer would get for the current alerts, and a button to run a real check now
+function renderMonitorPreview() {
+  const c = state.ctx, name = state.placeName || 'your field';
+  const min = AL.LEVELS[$('monLevel').value]?.rank ?? 1;
+  const send = (c.alerts ?? []).filter(a => AL.LEVELS[a.level].rank <= min);
+  $('monResult').innerHTML = `${send.length ? `<p class="small-label">With today's alerts you would get:</p>${send.map(a => `<div class="sms"><span>${AL.channelsFor(a.level).filter(x => x !== 'app').map(x => CHANNEL[x]).join(' + ')}</span><p>${esc(AL.smsText(a, name))}</p></div>`).join('')}` : '<p class="muted">Nothing would be sent today: no alerts at your level.</p>'}
+    ${state.monitorId ? '<button class="btn" id="monCheck">Run a check now</button><div id="monLog"></div>' : ''}`;
+  $('monCheck')?.addEventListener('click', async () => {
+    $('monLog').textContent = 'Checking forecast, satellite and pests…';
+    try {
+      const j = await (await fetch(`/api/monitor/${state.monitorId}/check`, { method: 'POST' })).json();
+      if (j.error) throw new Error(j.error);
+      const del = j.deliveries ?? [];
+      $('monLog').innerHTML = `<p>${j.alerts?.length ?? 0} alert(s) found, ${del.length} message(s) sent.</p>${del.length ? list(del.map(x => `${CHANNEL[x.channel] ?? x.channel}: ${esc(x.status)}${x.status === 'dry-run' ? ' (demo mode: no SMS provider set up, saved to the outbox)' : ''}`)) : ''}`;
+    } catch (err) { $('monLog').textContent = `❌ ${err.message}`; }
+  });
 }
 
 // Section menu in the results header: highlight where you are, open "How it works" when jumped to
@@ -559,23 +1006,42 @@ function watchSections() {
 
 async function init() {
   [state.crops, state.rotations] = await Promise.all(['crops', 'rotations'].map(f => fetch(`data/${f}.json`).then(r => r.json())));
+  fetch('data/pests.json').then(r => (r.ok ? r.json() : null)).then(p => { state.pests = p; }).catch(() => { state.pests = null; });
   const mainCrops = state.crops.filter(c => c.crop !== 'Cover crop');
   $('cropList').innerHTML = mainCrops.map(c => `<option value="${c.crop}">${c.nameBg}</option><option value="${c.nameBg}">${c.crop}</option>`).join('');
   $('focusCrop').innerHTML = mainCrops.map(c => `<option value="${c.crop}">${c.crop} · ${c.nameBg}</option>`).join('');
   $('historyRows').innerHTML = HISTORY_YEARS.map(historyRow).join('');
-  document.querySelectorAll('.history-row').forEach(row => row.querySelector('input').addEventListener('input', () => {
-    row.querySelector('.resolved').innerHTML = ''; resolveRow(row); $('historyError').hidden = true;
-  }));
+  document.querySelectorAll('.history-row').forEach(row => {
+    const input = row.querySelector('input');
+    input.addEventListener('input', () => {
+      row.querySelector('.resolved').innerHTML = ''; resolveRow(row); syncClear(row); $('historyError').hidden = true; refreshPreCheck();
+    });
+    row.querySelector('.row-clear').addEventListener('click', () => {
+      input.value = ''; row.querySelector('.resolved').innerHTML = ''; resolveRow(row); syncClear(row); input.focus();
+    });
+    // Enter jumps to the next (older) year
+    input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      row.nextElementSibling?.querySelector('input').focus();
+    });
+  });
   document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { fillPreset(b.dataset.preset); $('historyError').hidden = true; }));
   renderPriorities();
   renderRecent();
 
   document.querySelectorAll('[name=situation]').forEach(r => r.addEventListener('change', () => {
     $('historyBox').hidden = document.querySelector('[name=situation]:checked').value !== 'farm';
+    refreshPreCheck();
   }));
   document.querySelectorAll('[name=mode]').forEach(r => r.addEventListener('change', () => {
     $('cropPick').hidden = document.querySelector('[name=mode]:checked').value !== 'crop';
+    refreshPreCheck();
   }));
+  bindViewButtons();
+  setView(state.view);
+  $('monitorForm').addEventListener('submit', subscribe);
+  $('monLevel').addEventListener('change', () => state.ctx && renderMonitorPreview());
 
   $('searchForm').addEventListener('submit', search);
   $('searchResults').addEventListener('click', e => { const li = e.target.closest('li[data-i]'); if (li) pickResult(results[+li.dataset.i]); });
@@ -589,6 +1055,7 @@ async function init() {
   });
   $('clearField').addEventListener('click', () => { state.placeName = ''; M.clearField(); });
   $('analyze').addEventListener('click', analyze);
+  $('focusCrop').addEventListener('change', () => refreshPreCheck());
   document.querySelectorAll('.unit-btn').forEach(b => b.addEventListener('click', () => setUnit(b.dataset.unit)));
   const backToStart = () => { $('results').hidden = true; $('progress').hidden = true; $('start').hidden = false; M.refresh(); };
   $('back').addEventListener('click', backToStart);
