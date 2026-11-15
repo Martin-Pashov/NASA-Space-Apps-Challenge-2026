@@ -64,7 +64,8 @@ export async function getSoil(lat, lon) {
   const params = new URLSearchParams({ lat, lon, value: 'mean' });
   for (const p of ['clay', 'sand', 'silt', 'soc', 'phh2o']) params.append('property', p);
   for (const d of ['0-5cm', '5-15cm', '15-30cm']) params.append('depth', d);
-  const res = await fetch(`https://rest.isric.org/soilgrids/v2.0/properties/query?${params}`, { signal: timeout(60000) });
+  // SoilGrids is a research server that is often slow: give up after 20 s (the analysis then uses typical soil values)
+  const res = await fetch(`https://rest.isric.org/soilgrids/v2.0/properties/query?${params}`, { signal: timeout(20000) });
   if (!res.ok) throw new Error(`SoilGrids ${res.status}`);
 
   const v = {};
@@ -270,6 +271,9 @@ export async function getForecast(lat, lon) {
   try { j = await openMeteo(lat, lon, { daily: DAILY, models: MODELS.join(',') }); }
   catch (err) {
     console.warn('Forecast (ECMWF + ICON) failed ->', err.message);
+    // Open-Meteo's free limit is per IP address; shared cloud servers (Render) hit it, so go to MET Norway
+    try { return await metNorway(lat, lon); }
+    catch (err2) { console.warn('Forecast (MET Norway) failed ->', err2.message); }
     models = [null]; // Open-Meteo's own best model choice, basic variables only
     j = await openMeteo(lat, lon, { daily: DAILY_BASIC });
   }
@@ -290,6 +294,61 @@ export async function getForecast(lat, lon) {
   }).filter(x => x.tMax != null && x.tMin != null).slice(0, FORECAST_DAYS);
   if (!days.length) throw new Error('Open-Meteo returned no forecast days');
   return { source: models[0] ? 'ECMWF IFS + DWD ICON (via Open-Meteo)' : 'Open-Meteo', days };
+}
+
+// ---------- Backup forecast: MET Norway (Norwegian Meteorological Institute, free, covers Europe) ----------
+// Hourly data (UTC) grouped into local days. Its weather symbols are turned into the WMO codes the
+// alerts use: thunder -> 95 (MET Norway has no hail flag), heavy rain 65, rain 61, light rain 51, snow 71/75.
+function symbolToWmo(sym = '') {
+  if (sym.includes('thunder')) return 95;
+  if (sym.includes('heavysnow')) return 75;
+  if (sym.includes('snow') || sym.includes('sleet')) return 71;
+  if (sym.includes('heavyrain')) return 65;
+  if (sym.includes('lightrain')) return 51;
+  if (sym.includes('rain')) return 61;
+  if (sym.includes('fog')) return 45;
+  if (sym.startsWith('cloudy')) return 3;
+  if (sym.startsWith('partlycloudy')) return 2;
+  if (sym.startsWith('fair')) return 1;
+  return 0;
+}
+
+export async function metNorway(lat, lon) {
+  const url = `https://api.met.no/weatherapi/locationforecast/2.0/complete?lat=${(+lat).toFixed(4)}&lon=${(+lon).toFixed(4)}`;
+  const res = await fetch(url, { signal: timeout(12000), headers: { 'User-Agent': `${UA} github.com/Martin-Pashov/NASA-Space-Apps-Challenge-2026` } });
+  if (!res.ok) throw new Error(`MET Norway ${res.status}`);
+  const series = (await res.json())?.properties?.timeseries ?? [];
+  const offsetH = Math.round(lon / 15) + 1; // rough local time (Bulgaria: UTC+2 in winter); only used to group hours into days
+  const byDay = new Map();
+  for (const t of series) {
+    const local = new Date(Date.parse(t.time) + offsetH * 3600e3);
+    const date = local.toISOString().slice(0, 10);
+    const d = byDay.get(date) ?? { temps: [], rain: 0, rainHours: 0, prob: null, code: 0, gust: null };
+    const inst = t.data?.instant?.details ?? {};
+    if (typeof inst.air_temperature === 'number') d.temps.push(inst.air_temperature);
+    if (typeof inst.wind_speed_of_gust === 'number') d.gust = Math.max(d.gust ?? 0, inst.wind_speed_of_gust * 3.6);
+    // rain: hourly steps first, 6-hour steps later in the forecast (count each hour once)
+    const n1 = t.data?.next_1_hours, n6 = t.data?.next_6_hours;
+    const step = n1 ?? n6, hours = n1 ? 1 : 6;
+    if (step && d.rainHours < 24) {
+      d.rain += step.details?.precipitation_amount ?? 0;
+      d.rainHours += hours;
+      if (typeof step.details?.probability_of_precipitation === 'number') d.prob = Math.max(d.prob ?? 0, step.details.probability_of_precipitation);
+      d.code = Math.max(d.code, symbolToWmo(step.summary?.symbol_code));
+    }
+    byDay.set(date, d);
+  }
+  const today = new Date(Date.now() + offsetH * 3600e3).toISOString().slice(0, 10);
+  const days = [...byDay.entries()]
+    .filter(([date, d]) => date >= today && d.temps.length >= 4)
+    .slice(0, FORECAST_DAYS)
+    .map(([date, d]) => {
+      const tMax = Math.max(...d.temps), tMin = Math.min(...d.temps);
+      return { date, tMax, tMin, tMean: (tMax + tMin) / 2, rainMm: Math.round(d.rain * 10) / 10, rainProb: d.prob, code: d.code,
+        gustKmh: d.gust == null ? null : Math.round(d.gust), et0Mm: null };
+    });
+  if (days.length < 3) throw new Error('MET Norway returned too few days');
+  return { source: 'MET Norway (Norwegian Meteorological Institute)', days };
 }
 
 // ---------- OpenStreetMap Overpass: auto-detect the field shape ----------
