@@ -39,7 +39,7 @@ function renderRecent() {
   const list = loadRecent();
   $('recentWrap').hidden = !list.length;
   $('recent').innerHTML = list.map((r, i) =>
-    `<span class="recent-item"><button class="go-recent" data-i="${i}" title="${esc(new Date(r.date).toLocaleDateString())}">📍 ${esc(r.name)} · ${areaTxt(r.areaHa)}</button>` +
+    `<span class="recent-item"><button class="go-recent" data-i="${i}" title="${esc(new Date(r.date).toLocaleDateString())}">${esc(r.name)} · ${areaTxt(r.areaHa)}</button>` +
     `<button class="x" data-i="${i}" aria-label="Remove">×</button></span>`).join('');
 }
 
@@ -49,6 +49,7 @@ let nameTimer;
 function onFieldChange(field) {
   state.field = field;
   $('analyze').disabled = !field;
+  $('next1').disabled = !field || field.areaHa > 2000 || field.areaHa < 0.1;
   $('clearField').hidden = !field;
   $('fieldCard').classList.toggle('empty', !field);
   $('goHint').textContent = field ? '' : 'Select a field on the map first.';
@@ -162,7 +163,7 @@ function checkPlantExists(row, text) {
     row._gbif = res;
     const el = row.querySelector('.gbif');
     if (!el || row.querySelector('input').value.trim().toLowerCase() !== q) return;
-    if (res?.found) el.innerHTML = `<span class="tag ok small" title="GBIF: ${esc(res.scientificName)}${res.family ? ` (${esc(res.family)})` : ''}">🌿 real plant: ${esc(res.scientificName)}</span>`;
+    if (res?.found) el.innerHTML = `<span class="tag ok small" title="GBIF: ${esc(res.scientificName)}${res.family ? ` (${esc(res.family)})` : ''}">✓ real plant: ${esc(res.scientificName)}</span>`;
     else if (res?.found === false) el.innerHTML = '<span class="tag bad small">Not found in the world plant database. Check the spelling.</span>';
     else el.innerHTML = '';
     refreshPreCheck();
@@ -220,13 +221,54 @@ function fillPreset(list) {
   refreshPreCheck();
 }
 
+// ================= 3-STEP WIZARD =================
+
+state.step = 1;
+function showStep(n) {
+  if (n > 1 && !state.field) n = 1;
+  state.step = n;
+  document.querySelectorAll('.wiz-step').forEach(sec => { sec.hidden = +sec.dataset.step !== n; });
+  document.querySelectorAll('.wiz-only-1').forEach(el => { el.hidden = n !== 1; });
+  document.querySelectorAll('#stepper .st').forEach(b => {
+    const k = +b.dataset.go;
+    b.classList.toggle('active', k === n);
+    b.classList.toggle('done', k < n);
+    b.disabled = k > n;
+  });
+  document.querySelectorAll('#stepper .line').forEach((l, i) => l.classList.toggle('done', i + 1 < n));
+  if (n === 1) setTimeout(() => M.refresh(), 0);
+  if (n === 3) { renderSummary(); refreshPreCheck(true); }
+  window.scrollTo({ top: n === 1 ? 0 : document.getElementById('stepper').offsetTop - 16, behavior: 'smooth' });
+}
+
+// Step 2 -> 3 only when the history is usable
+function historyReady() {
+  if (document.querySelector('[name=situation]:checked').value !== 'farm') return true;
+  const h = readHistory();
+  if (h.seasons.length && !h.unresolved) return true;
+  $('historyError').hidden = false;
+  $('historyError').textContent = h.unresolved ? 'Fix the crops marked in red, or pick the closest crop group.' : 'Add at least one season, or choose "New land".';
+  return false;
+}
+
+// One line on step 3 with everything chosen so far
+function renderSummary() {
+  const f = state.field;
+  const farm = document.querySelector('[name=situation]:checked').value === 'farm';
+  const h = readHistory().seasons;
+  const grew = farm ? (h.length ? A.compressHistory(h.map(x => x.crop)).join(' ↔ ') : '–') : 'New land';
+  $('wizSummary').innerHTML = `<span>${esc(state.placeName || 'Your field')} · ${areaTxt(f.areaHa)}</span><button type="button" class="link-btn inline" data-go="1">change</button>
+    <span>${esc(grew)}</span><button type="button" class="link-btn inline" data-go="2">change</button>`;
+  $('wizSummary').querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showStep(+b.dataset.go)));
+}
+
 // ================= PRIORITIES =================
 
 // The three priorities the challenge asks for come first: water, soil, market & machinery.
 const MAIN_PRIORITIES = [
-  { keys: ['water'], chip: '💧 Water', hint: 'Crops that get by on the rain your field actually gets' },
-  { keys: ['soil'], chip: '🌱 Soil', hint: 'Healthier soil: legumes, cover crops, less bare ground' },
-  { keys: ['market', 'machinery'], chip: '🚜 Market & machinery', hint: 'Easy to sell, works with the equipment you have' },
+  { keys: ['water'], chip: 'Water', hint: 'Crops that get by on the rain your field actually gets' },
+  { keys: ['soil'], chip: 'Soil', hint: 'Healthier soil: legumes, cover crops, less bare ground' },
+  { keys: ['market', 'machinery'], chip: 'Market & machinery', hint: 'Easy to sell, works with the equipment you have' },
 ];
 const DEFAULT_ON = ['water', 'soil', 'risk'];
 
@@ -295,7 +337,7 @@ async function analyze() {
       $('historyError').textContent = history.unresolved
         ? 'Fix the crops marked in red or pick the closest crop group.'
         : 'Add at least one season, or choose "I\'m starting out".';
-      $('historyBox').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showStep(2);
     } else $('preCheck').scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
@@ -584,7 +626,7 @@ const chanceWord = p => (p >= 0.75 ? 'good' : p >= 0.55 ? 'fair' : 'poor');
 function seasonLine() {
   const c = state.ctx, pred = c.pred, m = pred?.ok ? pred.byCrop[c.nextCrop] : null;
   if (!m) return '';
-  return `<p class="season-line">📈 Chance of a good ${pred.harvestYear} season for ${esc(c.nextCrop)}: <b>${r0(m.p * 100)}% (${chanceWord(m.p)})</b>, usually ${r0(m.base * 100)}%. This autumn looks most like ${m.analogs[0].year}.</p>`;
+  return `<p class="season-line">Chance of a good ${pred.harvestYear} season for ${esc(c.nextCrop)}: <b>${r0(m.p * 100)}% (${chanceWord(m.p)})</b>, usually ${r0(m.base * 100)}%. This autumn looks most like ${m.analogs[0].year}.</p>`;
 }
 
 // The evidence for one strategy, each line with the dataset it comes from
@@ -603,13 +645,31 @@ function strategyData(p, current, e) {
   return out;
 }
 
+// Why this option, with numbers, so two options never get the same vague sentence
+function reasonText(p, cur, e) {
+  const out = [];
+  const dN = p.profitNormal - cur.profitNormal, dB = p.profitBad - cur.profitBad;
+  if (dB >= 10) out.push(`loses less in bad years (${money(p.profitBad)} instead of ${money(cur.profitBad)})`);
+  if (dN >= 10) out.push(`earns more in a normal year (+${money(dN)})`);
+  if (p.risk - cur.risk >= 2) out.push(`more good seasons (${r0(p.risk)}% vs ${r0(cur.risk)}%)`);
+  if (cur.bare - p.bare >= 0.5) out.push(`soil is bare ~${p.bare.toFixed(1)} instead of ~${cur.bare.toFixed(1)} months a year`);
+  if (cur.waterDemand - p.waterDemand >= 20) out.push(`needs ~${r0(cur.waterDemand - p.waterDemand)} mm less water a year`);
+  if (p.nSavedEur >= 5) out.push(`saves ~${money(p.nSavedEur)} of fertilizer a year`);
+  const cost = [];
+  if (dN <= -10) cost.push(`earns ${money(-dN)} less in a normal year`);
+  if (dB <= -10) cost.push(`loses more in bad years`);
+  const txt = out.length ? `Compared with now: ${out.slice(0, 3).join(', ')}.` : e.why;
+  return txt + (cost.length ? ` But it ${cost.join(' and ')}.` : '');
+}
+
 // What the data can't tell us about this strategy
 function strategyGaps(p, e) {
   const c = state.ctx, out = [];
   out.push('Yields and prices are regional estimates: enter your own under "Use your own yields and prices".');
   if (!c.field) out.push('No satellite history for this field, so bare soil and crop growth come from typical dates.');
   if (c.soil.isDefault) out.push('Soil data was unavailable; typical loam soil was assumed.');
-  if (e.newCrops.length) out.push(`Buyers and machinery for ${e.newCrops.join(', ')} near you are not checked.`);
+  const sellable = e.newCrops.filter(x => x !== 'Cover crop');
+  if (sellable.length) out.push(`Buyers and machinery for ${sellable.join(', ')} near you are not checked.`);
   out.push('Weather is a ~50 km grid, not a station on your field.');
   return out;
 }
@@ -625,7 +685,12 @@ function renderStrategies() {
   // the suggestion: an option that is clearly better for the farmer (see A.verdict), best one first
   const others = picks.filter(p => p.rotation !== c.currentName)
     .sort((a, b) => (A.verdict(b, current).key === 'better') - (A.verdict(a, current).key === 'better') || b.score - a.score);
-  const best = others[0];
+  // never suggest an option when another shown option is at least as good on money AND good seasons
+  // and clearly better on one of them (e.g. same 90% good seasons, but more profit in normal and bad years)
+  const dominates = (x, y) => x.profitNormal >= y.profitNormal - 5 && x.profitBad >= y.profitBad - 5 && x.risk >= y.risk - 1
+    && (x.profitNormal - y.profitNormal >= 20 || x.profitBad - y.profitBad >= 20 || x.risk - y.risk >= 3);
+  let best = others[0];
+  for (const o of others) if (best && o !== best && A.verdict(o, current).key !== 'worse' && dominates(o, best)) best = o;
   // only suggest a change when it's clearly better, never keep a monoculture
   const mono = current.mains.every(m => m === current.mains[0]) && !crops.find(x => x.crop === current.mains[0]).perennial;
   const keep = !c.beginner && !mono && A.verdict(best, current).key !== 'better';
@@ -641,8 +706,28 @@ function renderStrategies() {
   const sug = keep || !best ? current : best; // the rotation the answer card recommends
   const ans = A.buildAnswer({ best, current, lastCrop: c.lastCrop, crops, cy: c.cy, autumn: c.autumn, money, beginner: c.beginner, keep });
   const eyebrow = c.beginner ? 'Our suggestion to start' : keep ? 'Your rotation already fits well' : mono ? `Growing only ${current.mains[0]} is costing you` : 'Our suggestion';
-  $('answer').innerHTML = `<div class="eyebrow">${eyebrow}</div>
-    <h2>${esc(ans.title)}</h2><p class="when">🗓️ ${esc(ans.when)}</p>
+  const okN = (cy, name) => cy.rows.filter(r => r.crop === name && r.ok).length;
+  const unitWord = state.unit === 'dka' ? 'per decare' : 'per hectare';
+  const plain = v => { const t = money(v).replace(/\/(dka|ha)$/, ''); return v < 0 ? `you lose ${t.replace('-', '')}` : t; };
+  const nextK = crops.find(x => x.crop === c.nextCrop);
+  const nowM = new Date().getMonth() + 1;
+  const passed = nowM > nextK.sowMonth && nowM - nextK.sowMonth <= 3;
+  const coverFirst = c.nextItem.includes('+');
+  const plan = (keep || !best ? current : best).plan.map(i => i.split('+').join(' → ')).join(' → ');
+  const simpleAnswer = `<div class="simple-only plain">
+      <p class="eyebrow">Our advice</p>
+      <h2>${keep ? `Keep going: sow ${esc(c.nextCrop)}` : `Sow ${esc(c.nextCrop)}`}</h2>
+      <p class="when">${coverFirst ? `After the harvest, sow a cover crop. Then ${esc(c.nextCrop)} in ${esc(nextK.sowWindow)}.` : passed ? `Sowing time was ${esc(nextK.sowWindow)}. If it's already sown, that's fine.` : `Sow in ${esc(nextK.sowWindow)}.`}</p>
+      <ul class="big-facts">
+        <li>✅ Good harvest in <b>${okN(c.cy, c.nextCrop)} of ${n}</b> past years</li>
+        <li>💶 Normal year: <b>${plain(sug.profitNormal)}</b> ${unitWord}</li>
+        <li>⚠️ Bad year: <b>${plain(sug.profitBad)}</b> ${unitWord}</li>
+      </ul>
+      <p class="plan">Plan for the next years: <b>${esc(plan)}</b></p>
+      ${moreLink('answer', 'Why we advise this')}
+    </div>`;
+  $('answer').innerHTML = simpleAnswer + `<div class="detail-only"><div class="eyebrow">${eyebrow}</div>
+    <h2>${esc(ans.title)}</h2><p class="when">${esc(ans.when)}</p>
     <div class="facts">
       <div class="fact" title="Out of the last 24 years, the share with enough rain and no damaging heat for these crops on your field"><span>Good seasons ⓘ</span><b>${r0(sug.risk)}%</b></div>
       <div class="fact" title="Profit after typical growing costs, before rent and subsidies, in a typical year"><span>Normal year ⓘ</span><b>${money(sug.profitNormal)}</b></div>
@@ -650,14 +735,13 @@ function renderStrategies() {
     </div>
     ${seasonLine()}
     ${list(ans.reasons.map(esc))}
-    ${ans.how ? `<div class="how">🌱 ${esc(ans.how)}</div>` : ''}
-    ${ans.tradeOff ? `<div class="risk">💶 ${esc(ans.tradeOff)}</div>` : ''}
+    ${ans.how ? `<div class="how">${esc(ans.how)}</div>` : ''}
+    ${ans.tradeOff ? `<div class="risk">${esc(ans.tradeOff)}</div>` : ''}
     ${ans.risk ? `<div class="risk">⚠️ ${esc(ans.risk)}</div>` : ''}
-    <p class="rotation">${keep ? 'Keep' : c.beginner ? 'Suggested rotation' : 'Suggested rotation for the next years'}: <b>${esc(ans.rotation.replace(/^Your rotation: /, ''))}</b>. See the comparison below.</p>`;
+    <p class="rotation">${keep ? 'Keep' : c.beginner ? 'Suggested rotation' : 'Suggested rotation for the next years'}: <b>${esc(ans.rotation.replace(/^Your rotation: /, ''))}</b>. See the comparison below.</p></div>`;
 
   // ---- crop verdict (single-crop mode) and crop table
   const ranks = A.rankCrops(c.cy, crops);
-  const okN = (cy, name) => cy.rows.filter(r => r.crop === name && r.ok).length;
   const dryNow = new Set(c.autumn.filter(a => a.dry).map(a => a.crop));
   const box = $('verdictBox');
   box.hidden = !focus;
@@ -700,6 +784,24 @@ function renderStrategies() {
   const allNew = new Set();
   const letters = ['A', 'B', 'C'];
   const chosenLabels = Object.entries(weights).filter(([, w]) => w >= 5).map(([k]) => A.PRIORITIES[k].chip);
+  const optName = (p, i) => (p.rotation === c.currentName ? (c.beginner ? 'Usual choice' : 'What you do now') : p.rotation === c.suggestion.rotation ? '⭐ Our advice' : 'Other option');
+  // one short reason in plain words, compared with what the farmer does now
+  const whyShort = p => {
+    if (p.rotation === current.rotation) return '';
+    const out = [];
+    if (current.bare - p.bare >= 0.5) out.push('soil stays covered');
+    if (p.profitBad - current.profitBad >= 10) out.push('loses less in bad years');
+    if (p.risk - current.risk >= 2) out.push('more good years');
+    if (p.legumes.length) out.push('needs less fertilizer');
+    if (p.waterDemand < current.waterDemand - 20) out.push('needs less water');
+    return out.slice(0, 2).join(', ') || 'similar';
+  };
+  const cropsOf = p => p.plan.map(i => i.replace('Cover crop+', 'cover crop → ')).join(' → ');
+  $('optionsSimple').innerHTML = `<h2>Your 3 options</h2>
+    <div class="table-wrap"><table class="plain-table"><tr><th></th><th>Crops, year after year</th><th>Good years</th><th>Normal year</th><th>Better because</th></tr>
+    ${picks.map((p, i) => `<tr class="${p.rotation === c.suggestion.rotation ? 'pick' : ''}"><td><b>${optName(p, i)}</b></td><td>${esc(cropsOf(p))}</td><td>${r0(p.risk)}%</td><td>${money(p.profitNormal).replace(/\/(dka|ha)$/, '')}</td><td>${esc(whyShort(p))}</td></tr>`).join('')}
+    </table></div>
+    ${moreLink('optionsSec', 'Compare the 3 options in detail')}`;
   $('prioLine').innerHTML = chosenLabels.length ? `Ranked by what matters to you: ${chosenLabels.map(x => `<span class="chip-static">${esc(x)}</span>`).join(' ')}` : '';
   $('strategies').innerHTML = picks.map((p, i) => {
     const e = A.explainStrategy(p, current, ctx);
@@ -711,17 +813,17 @@ function renderStrategies() {
     const benefits = isCur ? [c.beginner ? 'The most common rotation in Bulgaria: machinery, seed and buyers are easy to find.' : 'No switching costs: you know these crops, have the machinery and the buyers.'] : e.benefits;
     const isPick = p.rotation === c.suggestion.rotation;
     return `<article class="strategy ${isCur ? 'current' : ''} ${isPick ? 'pick' : ''}">
-      <div class="head"><span class="kind">Strategy ${letters[i]} · ${esc(isCur ? (c.beginner ? 'Typical rotation (baseline)' : 'Your rotation now (baseline)') : p.label)}</span>${isPick ? '<span class="chip better simple-only">⭐ Our pick</span>' : ''}${v.key === 'now' ? '' : `<span class="chip ${v.key} detail-only">${v.text}</span>`}</div>
+      <div class="head"><span class="kind">Strategy ${letters[i]} · ${esc(isCur ? (c.beginner ? 'Typical rotation (baseline)' : 'Your rotation now (baseline)') : (p.label === 'Best match for your priorities' && !isPick ? 'Good for your priorities' : p.label))}</span>${isPick ? '<span class="chip better simple-only">⭐ Our pick</span>' : ''}${v.key === 'now' ? '' : `<span class="chip ${v.key} detail-only">${v.text}</span>`}</div>
       <h3>${esc(p.rotation.replace(/^Your rotation: /, ''))}</h3>
       <div class="facts"><div class="fact"><span>Good seasons</span><b>${r0(p.risk)}%</b></div>
         <div class="fact"><span>Normal year</span><b>${money(p.profitNormal)}</b></div>
         <div class="fact"><span>Bad year</span><b>${money(p.profitBad)}</b></div></div>
-      <p class="simple-only strat-simple">${e.why}</p>
+      <p class="simple-only strat-simple">${isCur ? e.why : reasonText(p, current, e)}</p>
       <div class="detail-only strat-sections">
-        <section><h4>🎯 Why we suggest it</h4><p>${e.why}</p></section>
-        <section><h4>🛰️ NASA &amp; ESA data behind it</h4>${list(data)}</section>
-        <section><h4>✅ Benefits</h4>${list(benefits)}</section>
-        <section><h4>⚠️ Risks and gaps in the data</h4>${list([...e.risks, ...gaps])}</section>
+        <section><h4>${isCur ? 'Why it\'s here' : 'Why we suggest it'}</h4><p>${isCur ? e.why : reasonText(p, current, e)}</p></section>
+        <section><h4>NASA &amp; ESA data behind it</h4>${list(data)}</section>
+        <section><h4>Benefits</h4>${list(benefits)}</section>
+        <section><h4>Risks and gaps in the data</h4>${list([...e.risks, ...gaps])}</section>
       </div></article>`;
   }).join('');
   $('gaps').innerHTML = A.infoGaps({ field: c.field, soil: c.soil, weights, newCrops: [...allNew] }).map(g => `<li>${g}</li>`).join('');
@@ -737,7 +839,7 @@ function renderStrategies() {
 // ================= ALERTS =================
 
 const ALERT_ICON = { hail: '🧊', flood: '🌊', drought: '☀️', frost: '❄️', heat: '🔥', wind: '💨', storm: '⛈️', pest: '🐛', disease: '🍄', vegetation: '🛰️', nutrient: '🧪' };
-const CHANNEL = { call: '📞 call', sms: '💬 SMS', app: '📱 app' };
+const CHANNEL = { call: 'call', sms: 'SMS', app: 'app' };
 
 function computeAlerts() {
   const c = state.ctx, d = state.data;
@@ -763,14 +865,16 @@ function renderAlerts() {
   const minor = al.length - major.length;
   const item = a => `<div class="alert lvl-${a.level}${a.level === 'urgent' || a.level === 'warning' ? '' : ' detail-only'}">
       <span class="badge">${L[a.level].label}<small>${L[a.level].labelBg}</small></span>
-      <div><h3>${ALERT_ICON[a.type] ?? '⚠️'} ${esc(a.title)}</h3><p>${esc(a.text)}</p>${a.action ? `<p class="action">👉 ${esc(a.action)}</p>` : ''}
+      <div><h3>${ALERT_ICON[a.type] ?? '⚠️'} ${esc(a.title)}</h3><p>${esc(a.text)}</p>${a.action ? `<p class="action">${esc(a.action)}</p>` : ''}
       <span class="src">${esc(a.when ?? '')} · ${esc(a.source ?? '')} · sent by ${(a.channels ?? L[a.level].channels).map(x => CHANNEL[x]).join(', ')}</span></div></div>`;
   $('alertsSec').classList.toggle('detail-only', !major.length);
-  $('alertsSec').innerHTML = `<h2>🚨 Alerts for your field</h2>
-    <p class="muted">Next ${SURE_DAYS} days of weather, the latest satellite image of your field and pest risk for ${c.fieldCrops.map(esc).join(', ')}.</p>
+  $('alertsSec').innerHTML = `<h2>Warnings for the next 7 days</h2>
+    <p class="muted detail-only">Next ${SURE_DAYS} days of weather, the latest satellite image of your field and pest risk for ${c.fieldCrops.map(esc).join(', ')}.</p>
     ${c.forecast ? '' : `<p class="insight warn">The weather forecast could not be loaded, so hail, frost, rain and pest-weather alerts are missing. <small>(${esc(forecastProblem())})</small></p>`}
-    ${major.length ? '' : '<p class="insight good">✅ No urgent alerts or warnings right now.</p>'}
-    <div class="alerts">${al.map(item).join('')}</div>
+    ${major.length ? '' : '<p class="insight good detail-only">No urgent alerts or warnings right now.</p>'}
+    <ul class="plain-alerts simple-only">${major.map(a => `<li class="lvl-${a.level}"><b>${ALERT_ICON[a.type] ?? '⚠️'} ${esc(a.title)}${a.when ? `, ${esc(a.when)}` : ''}</b><span>${esc((a.action ?? '').split(/(?<=\.)\s/)[0])}</span></li>`).join('')}</ul>
+    ${moreLink('alertsSec', 'All warnings and the 7-day forecast')}
+    <div class="alerts detail-only">${al.map(item).join('')}</div>
     ${c.forecast ? `<details class="adjust-wrap detail-only"><summary>Weather forecast, next ${SHOW_DAYS} days</summary><div class="chart"><canvas id="forecastChart"></canvas></div><p class="muted">${esc(c.forecast.source ?? 'Open-Meteo')}, for your field's exact location. ECMWF and DWD ICON are the two most accurate weather models for Europe; hail and wind take the worse of the two.</p></details>` : ''}`;
   if (c.forecast && window.Chart) {
     const days = c.forecast.days.slice(0, SHOW_DAYS);
@@ -789,7 +893,7 @@ function renderAlerts() {
 function renderPrediction() {
   const c = state.ctx, pred = c.pred, box = $('predictSec');
   if (!pred?.ok) {
-    box.innerHTML = `<h2>📈 Season risk</h2><p class="muted">${esc(pred?.reason ?? 'Not available.')}</p>`;
+    box.innerHTML = `<h2>Season risk</h2><p class="muted">${esc(pred?.reason ?? 'Not available.')}</p>`;
     return;
   }
   const crop = c.nextCrop;
@@ -800,7 +904,7 @@ function renderPrediction() {
   const goodOf = m.analogs.filter(a => a.ok).length;
   const ev = pred.eval;
   const rows = [...new Set([...c.fieldCrops, ...c.suggestion.mains, ...pred.perCrop.slice(0, 5).map(x => x.crop)])].map(x => pred.byCrop[x]).filter(Boolean);
-  box.innerHTML = `<h2>📈 Season risk for ${pred.harvestYear}</h2>
+  box.innerHTML = `<h2>Season risk for ${pred.harvestYear}</h2>
     <p class="muted">A machine-learning model compares this season so far with the last ${pred.nYears} seasons on your field${pred.usedForecast ? ' (including the next 7 days of forecast)' : ''}.</p>
     <div class="risk-gauge lvl-${m.p >= 0.75 ? 'low' : m.p >= 0.55 ? 'medium' : 'high'}">
       <div class="score"><b>${r0(m.p * 100)}</b><span>%</span></div>
@@ -824,9 +928,13 @@ function renderPrediction() {
 
 // ================= PESTS, DISEASES AND FERTILIZER =================
 
+// [4,5,6] -> "April–June"
+const LONG_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const monthSpan = ms => (ms.length === 1 ? LONG_MONTHS[ms[0] - 1] : `${LONG_MONTHS[ms[0] - 1]}–${LONG_MONTHS[ms.at(-1) - 1]}`);
+
 function renderPests() {
   const c = state.ctx, db = state.pests, box = $('pestsSec');
-  if (!db) { box.innerHTML = '<h2>🐛 Pests, diseases and fertilizer</h2><p class="muted">Pest information could not be loaded.</p>'; return; }
+  if (!db) { box.innerHTML = '<h2>Pests, diseases and fertilizer</h2><p class="muted">Pest information could not be loaded.</p>'; return; }
   const now = new Date().getMonth() + 1;
   const soon = [0, 1, 2, 3, 4, 5].map(i => (now - 1 + i) % 12 + 1);
   const crops = c.fieldCrops.filter(x => db.crops[x]);
@@ -849,20 +957,21 @@ function renderPests() {
   if (!c.soil.isDefault && c.soil.ph > 7.8) soilNotes.push(`Alkaline soil (pH ${c.soil.ph.toFixed(1)}): watch for zinc and iron shortage, especially in corn.`);
   if (c.soil.texture === 'Sandy') soilNotes.push('Sandy soil: nitrogen washes out after heavy rain; split it into 2–3 smaller doses.');
   const nutrientAlert = (c.alerts ?? []).find(a => a.type === 'nutrient');
-  box.innerHTML = `<h2>🐛 Watch this season</h2>
+  box.innerHTML = `<h2>Watch out for</h2>
     <p class="muted detail-only">What to watch for ${crops.map(esc).join(', ')} in the coming months, and what to do. Always use products registered by БАБХ and follow the label.</p>
     ${pestAlerts.length ? `<p class="insight warn">The forecast weather favours ${pestAlerts.map(a => esc(a.title)).join('; ')}. See the alerts above.</p>` : ''}
-    <ul class="watch simple-only">${watch.slice(0, 3).map(p => `<li><b>${typeIcon[p.type] ?? '🐛'} ${nameOf(p)}</b> · ${esc(p.crop)}, ${months(p.months)}<br><span>${esc(p.action.split(/(?<=\.)\s/)[0])}</span></li>`).join('')}
-      ${fert ? `<li><b>🧪 Fertilizer for ${esc(c.nextCrop)}</b><br><span>About ${Math.max(0, fert.N - nCredit)} kg nitrogen, ${fert.P2O5} kg P₂O₅ and ${fert.K2O} kg K₂O per ha for a normal yield. Split the nitrogen.</span></li>` : ''}</ul>
+    <ul class="watch simple-only">${watch.slice(0, 3).map(p => `<li><b>${esc(p.nameBg || p.name)}</b>${p.nameBg ? ` (${esc(p.name)})` : ''} on ${esc(p.crop.toLowerCase())}: check in ${monthSpan(p.months)}</li>`).join('')}
+      ${fert ? `<li><b>Fertilizer</b> for ${esc(c.nextCrop.toLowerCase())}: about ${state.unit === 'dka' ? `${r0(Math.max(0, fert.N - nCredit) / 10)} kg nitrogen per decare` : `${Math.max(0, fert.N - nCredit)} kg nitrogen per hectare`}, in 2 parts</li>` : ''}</ul>
+    ${moreLink('pestsSec', 'What to look for and what to do')}
     <div class="pest-cards detail-only">${watch.length ? watch.map(p => `<div class="pest sev-${p.severity}">
       <h3>${typeIcon[p.type] ?? '🐛'} ${nameOf(p)}</h3><p class="muted">${esc(p.crop)} · ${months(p.months)}${p.severity === 3 ? ' · can destroy the crop' : ''}</p>
       <p><b>You'll see:</b> ${esc(p.signs)}</p><p><b>Do:</b> ${esc(p.action)}</p>
-      <p class="detail-only"><b>Check:</b> ${esc(p.scout)}</p>${p.satellite ? `<p class="detail-only muted">🛰️ ${esc(p.satellite)}</p>` : ''}</div>`).join('') : '<p>Nothing major to watch in the coming months.</p>'}</div>
-    ${fert ? `<div class="detail-only"><h3 class="sub">🧪 Fertilizer for ${esc(c.nextCrop)}</h3>
+      <p class="detail-only"><b>Check:</b> ${esc(p.scout)}</p>${p.satellite ? `<p class="detail-only muted">From space: ${esc(p.satellite)}</p>` : ''}</div>`).join('') : '<p>Nothing major to watch in the coming months.</p>'}</div>
+    ${fert ? `<div class="detail-only"><h3 class="sub">Fertilizer for ${esc(c.nextCrop)}</h3>
       <div class="facts nutrients"><div class="fact"><span>Nitrogen N</span><b>${Math.max(0, fert.N - nCredit)} kg/ha</b></div><div class="fact"><span>Phosphorus P₂O₅</span><b>${fert.P2O5} kg/ha</b></div><div class="fact"><span>Potassium K₂O</span><b>${fert.K2O} kg/ha</b></div></div>
       <p class="muted">Typical need for a normal yield${nCredit ? `, minus ~${nCredit} kg N/ha left by ${esc(c.lastCrop)}` : ''}. ${esc(fert.note ?? '')} A soil test every 4–5 years tells you the real numbers.</p>
       ${soilNotes.length ? list(soilNotes.map(esc)) : ''}
-      ${nutrientAlert ? `<p class="insight warn">🛰️ ${esc(nutrientAlert.text)}</p>` : ''}</div>` : ''}
+      ${nutrientAlert ? `<p class="insight warn">${esc(nutrientAlert.text)}</p>` : ''}</div>` : ''}
     <details class="adjust-wrap detail-only"><summary>All pests and diseases for your crops</summary>
       ${crops.map(cr => `<h4>${esc(cr)}</h4><div class="table-wrap"><table class="pest-table"><tr><th>Pest / disease</th><th>When</th><th>Signs</th><th>Check (threshold)</th><th>What to do</th></tr>
         ${db.crops[cr].pests.map(p => `<tr><td>${typeIcon[p.type] ?? ''} ${nameOf(p)}<br><small><i>${esc(p.latin ?? '')}</i></small></td><td>${months(p.months)}</td><td>${esc(p.signs)}</td><td>${esc(p.scout)}</td><td>${esc(p.action)}</td></tr>`).join('')}</table></div>`).join('')}
@@ -903,39 +1012,43 @@ function renderGlance() {
 function renderChecks() {
   const res = V.resultChecks({ data: state.data, ctx: state.ctx, strategies: state.picks ?? [], prediction: state.ctx.pred });
   state.checks = res;
-  const groups = [...new Set(res.checks.map(x => x.group))];
-  const icon = ok => (ok ? '✅' : ok === false ? '❌' : '➖');
-  $('checksBadge').hidden = false;
-  $('checksBadge').textContent = `${res.failed ? '⚠️' : '✅'} ${res.passed}/${res.total} data checks passed`;
-  $('checksSec').innerHTML = `<h2>${res.failed ? '⚠️' : '✅'} Data and result checks: ${res.passed} of ${res.total} passed</h2>
-    <p class="muted">Every data source is checked for missing or impossible values, and the results for consistency, before you see them.${res.failed ? ' Something failed: treat the numbers with extra care.' : ''}</p>
-    <div class="detail-only checks">${groups.map(g => `<h3 class="sub">${g}</h3><ul>${res.checks.filter(x => x.group === g).map(x => `<li>${icon(x.ok)} ${esc(x.text)}</li>`).join('')}</ul>`).join('')}</div>`;
+  // checked silently; problems go to the browser console for the team
+  for (const x of res.checks.filter(x => x.ok === false)) console.warn('Check failed:', x.text);
 }
 
 // ================= HOW TO READ THIS =================
 
 function renderGuide() {
   const item = (t, d, detail) => `<div class="${detail ? 'detail-only' : ''}"><dt>${t}</dt><dd>${d}</dd></div>`;
-  $('guideSec').innerHTML = `<h2>📖 How to read your results</h2>
+  $('guideSec').innerHTML = `<h2>How to read your results</h2>
     <p class="muted">What each part shows and how to use it.</p>
     <dl class="guide">
-      ${item('🌾 Our suggestion', 'The one thing to do next: which crop to sow and when, with the main reasons and risk.')}
-      ${item('🚨 Alerts', 'Things that need action soon. <b>URGENT</b> = act within hours (you also get a call + SMS). <b>WARNING</b> = plan in the next days (SMS). <b>RECOMMENDATION</b> and <b>INFO</b> = good to know (in the app).')}
-      ${item('🅰️🅱️🅲 3 strategies', 'A is what you do now (the baseline). B and C are new rotations. Compare the three numbers on each card.')}
-      ${item('✅ Good seasons', 'Out of the last 24 years, how many had enough rain and no damaging heat for these crops on your field. Higher is safer.')}
-      ${item('💶 Normal year / bad year', 'Profit per decare after typical costs, before rent and subsidies. "Bad year" is about 1 year in 10. A minus means you lose money that year.')}
-      ${item('📈 Season risk', '0–100: how risky the coming season looks for your next crop, from comparing this season so far with similar past seasons. Below 30 is low, above 60 is high.')}
-      ${item('🐛 Pests and fertilizer', 'The pests and diseases to watch in the coming months, what you\'ll see, what to do, and how much fertilizer the next crop needs.')}
-      ${item('🟢 Greenness (NDVI)', 'From Sentinel-2: 0 = bare soil, 0.3 = young or stressed crop, 0.7+ = dense healthy crop. A sudden drop compared with other years can mean pests, disease, lack of nitrogen or drought.', true)}
-      ${item('🔵 Moisture (NDMI)', 'Water in the plants and topsoil. If greenness drops and moisture drops too, it\'s drought; if moisture is normal, look for pests, disease or nutrients.', true)}
-      ${item('🟫 Bare soil', 'Days without plant cover. Bare soil loses water and topsoil; cover crops reduce it.', true)}
-      ${item('🌡️ By 2035', 'The same test with the measured warming and rain trend continued to 2035. A projection, not a forecast.', true)}
-      ${item('🎯 Model skill', 'How the season-risk model did on past years it hadn\'t seen. Above 0 means it beats just assuming an average year.', true)}
-      ${item('✔️ Data checks', 'Every source is checked for missing or impossible values. If a check fails, that number is less reliable.')}
+      ${item('Our suggestion', 'The one thing to do next: which crop to sow and when, with the main reasons and risk.')}
+      ${item('Alerts', 'Things that need action soon. <b>URGENT</b> = act within hours (you also get a call + SMS). <b>WARNING</b> = plan in the next days (SMS). <b>RECOMMENDATION</b> and <b>INFO</b> = good to know (in the app).')}
+      ${item('3 strategies', 'A is what you do now (the baseline). B and C are new rotations. Compare the three numbers on each card.')}
+      ${item('Good seasons', 'Out of the last 24 years, how many had enough rain and no damaging heat for these crops on your field. Higher is safer.')}
+      ${item('Normal year / bad year', 'Profit per decare after typical costs, before rent and subsidies. "Bad year" is about 1 year in 10. A minus means you lose money that year.')}
+      ${item('Season risk', '0–100: how risky the coming season looks for your next crop, from comparing this season so far with similar past seasons. Below 30 is low, above 60 is high.')}
+      ${item('Pests and fertilizer', 'The pests and diseases to watch in the coming months, what you\'ll see, what to do, and how much fertilizer the next crop needs.')}
+      ${item('Greenness (NDVI)', 'From Sentinel-2: 0 = bare soil, 0.3 = young or stressed crop, 0.7+ = dense healthy crop. A sudden drop compared with other years can mean pests, disease, lack of nitrogen or drought.', true)}
+      ${item('Moisture (NDMI)', 'Water in the plants and topsoil. If greenness drops and moisture drops too, it\'s drought; if moisture is normal, look for pests, disease or nutrients.', true)}
+      ${item('Bare soil', 'Days without plant cover. Bare soil loses water and topsoil; cover crops reduce it.', true)}
+      ${item('By 2035', 'The same test with the measured warming and rain trend continued to 2035. A projection, not a forecast.', true)}
+      ${item('Model skill', 'How the season-risk model did on past years it hadn\'t seen. Above 0 means it beats just assuming an average year.', true)}
+      ${item('Data checks', 'Every source is checked for missing or impossible values. If a check fails, that number is less reliable.')}
     </dl>`;
 }
 
 // ================= SIMPLE / DETAILED VIEW =================
+
+// In the simple view each block ends with a link to its detailed version
+const moreLink = (id, text = 'See more details') => `<button type="button" class="more-link simple-only" data-goto="${id}">${text} ›</button>`;
+document.addEventListener('click', e => {
+  const b = e.target.closest('.more-link');
+  if (!b) return;
+  setView('detailed');
+  requestAnimationFrame(() => document.getElementById(b.dataset.goto)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+});
 
 const VIEW_KEY = 'fieldshift.view';
 state.view = (() => { try { return localStorage.getItem(VIEW_KEY) || 'simple'; } catch { return 'simple'; } })();
@@ -1054,9 +1167,18 @@ async function init() {
   });
   $('clearField').addEventListener('click', () => { state.placeName = ''; M.clearField(); });
   $('analyze').addEventListener('click', analyze);
+  document.querySelectorAll('#stepper .st, .wiz-foot [data-go]').forEach(b => b.addEventListener('click', () => showStep(+b.dataset.go)));
+  $('next1').addEventListener('click', () => showStep(2));
+  $('next2').addEventListener('click', () => { if (historyReady()) showStep(3); });
+  $('cropMode').addEventListener('change', () => {
+    document.querySelector(`[name=mode][value=${$('cropMode').checked ? 'crop' : 'recommend'}]`).checked = true;
+    $('cropPick').hidden = !$('cropMode').checked;
+    refreshPreCheck();
+  });
+  showStep(1);
   $('focusCrop').addEventListener('change', () => refreshPreCheck());
   document.querySelectorAll('.unit-btn').forEach(b => b.addEventListener('click', () => setUnit(b.dataset.unit)));
-  const backToStart = () => { $('results').hidden = true; $('progress').hidden = true; $('start').hidden = false; M.refresh(); };
+  const backToStart = () => { $('results').hidden = true; $('progress').hidden = true; $('start').hidden = false; showStep(1); };
   $('back').addEventListener('click', backToStart);
   $('progressBack').addEventListener('click', backToStart);
 

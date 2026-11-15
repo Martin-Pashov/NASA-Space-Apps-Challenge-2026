@@ -19,7 +19,8 @@ const MAX_FIELD_HA = 2000; // keeps Sentinel Hub processing quota under control
 const CHECK_EVERY_MS = 6 * 3600e3;
 
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(ROOT, 'public')));
+// no-cache: the browser always checks for a newer page, script or style (we change them often)
+app.use(express.static(path.join(ROOT, 'public'), { setHeaders: res => res.setHeader('Cache-Control', 'no-cache') }));
 app.use('/vendor/chart', express.static(path.join(ROOT, 'node_modules/chart.js/dist')));
 app.use('/vendor/leaflet', express.static(path.join(ROOT, 'node_modules/leaflet/dist')));
 app.use('/vendor/geoman', express.static(path.join(ROOT, 'node_modules/@geoman-io/leaflet-geoman-free/dist')));

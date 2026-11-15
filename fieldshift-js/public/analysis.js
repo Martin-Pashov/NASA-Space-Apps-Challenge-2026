@@ -360,17 +360,17 @@ function bareMonthsPerYear(plan, crop) {
 
 // All priorities the farmer can pick. Keys match the score fields on each rotation.
 export const PRIORITIES = {
-  water: { label: 'water fit', chip: '💧 Save moisture', hint: 'Crops that get by on the rain your field actually gets' },
-  erosion: { label: 'erosion protection', chip: '🌬️ Stop erosion', hint: 'Keep the soil covered so wind and rain don\'t carry it away' },
-  income: { label: 'income', chip: '💶 More income', hint: 'Higher typical profit per hectare' },
-  soil: { label: 'soil health', chip: '🌱 Healthier soil', hint: 'Legumes, cover crops and variety build organic matter' },
-  risk: { label: 'harvest reliability', chip: '🛡️ Fewer bad years', hint: 'Crops that survived most of the past 25 years of weather' },
-  cost: { label: 'low costs', chip: '🧾 Lower costs', hint: 'Less money on fertilizer, seed and fuel' },
+  water: { label: 'water fit', chip: 'Save moisture', hint: 'Crops that get by on the rain your field actually gets' },
+  erosion: { label: 'erosion protection', chip: 'Stop erosion', hint: 'Keep the soil covered so wind and rain don\'t carry it away' },
+  income: { label: 'income', chip: 'More income', hint: 'Higher typical profit per hectare' },
+  soil: { label: 'soil health', chip: 'Healthier soil', hint: 'Legumes, cover crops and variety build organic matter' },
+  risk: { label: 'harvest reliability', chip: 'Fewer bad years', hint: 'Crops that survived most of the past 25 years of weather' },
+  cost: { label: 'low costs', chip: 'Lower costs', hint: 'Less money on fertilizer, seed and fuel' },
   labor: { label: 'less work', chip: '⏱️ Less work', hint: 'Crops that need less time and labour' },
-  machinery: { label: 'fits your machinery', chip: '🚜 My machinery', hint: 'Use the equipment you already have' },
-  market: { label: 'easy to sell', chip: '🏪 Easy to sell', hint: 'Crops with buyers nearby and a steady market' },
-  forage: { label: 'animal feed', chip: '🐄 Animal feed', hint: 'Grow feed or hay for your animals' },
-  pests: { label: 'breaks pest cycles', chip: '🐛 Break pests & diseases', hint: 'Alternate crop families so pests and diseases can\'t build up' },
+  machinery: { label: 'fits your machinery', chip: 'My machinery', hint: 'Use the equipment you already have' },
+  market: { label: 'easy to sell', chip: 'Easy to sell', hint: 'Crops with buyers nearby and a steady market' },
+  forage: { label: 'animal feed', chip: 'Animal feed', hint: 'Grow feed or hay for your animals' },
+  pests: { label: 'breaks pest cycles', chip: 'Break pests & diseases', hint: 'Alternate crop families so pests and diseases can\'t build up' },
   subsidies: { label: 'EU eco-scheme fit', chip: '🇪🇺 EU subsidies', hint: 'Diversification, legumes and winter cover often qualify for eco-schemes' },
 };
 const LABELS = Object.fromEntries(Object.entries(PRIORITIES).map(([k, v]) => [k, v.label]));

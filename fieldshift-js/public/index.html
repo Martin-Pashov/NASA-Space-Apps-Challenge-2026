@@ -20,21 +20,25 @@
       <a class="logo" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#2b241d"/><path d="M6 6h11.5l-2 9H6z" fill="#e0b12f"/><path d="M20 6h6v12h-8.6z" fill="#6f9e5c"/><path d="M6 17.5h9l-1.6 8.5H6z" fill="#6f9e5c"/><path d="M16.9 20.5H26V26H15.8z" fill="#c9a14a"/></svg>FieldShift</a>
       <div class="sources"><span class="src-label">Built on open data from</span><span class="src-pill">NASA POWER</span><span class="src-pill">NASA SRTM</span><span class="src-pill">ESA Sentinel-2</span><span class="src-pill">ISRIC SoilGrids</span></div>
     </header>
-    <section class="hero">
-      <div>
-        <h1>See what your field can't show you</h1>
-        <p class="lead">You see your crops. Satellites see the rest: how long your soil stays bare, whether this season is drier than usual, and how each crop held up in 24 years of weather on your exact field.</p>
-      </div>
-      <ul class="gets">
-        <li><span class="ico rain">🛰️</span><span><b>Your field from space</b>Moisture, bare soil and crop growth from Sentinel-2, inside your field's borders.</span></li>
-        <li><span class="ico soil">🌾</span><span><b>24 seasons of stress tests</b>Every crop checked against drought and heat years, back-tested on the 2020 Dobrudzha drought.</span></li>
-        <li><span class="ico plan">📋</span><span><b>A rotation plan in euros</b>What to sow next, when, and what it earns in a normal and a bad year.</span></li>
-      </ul>
+    <section class="hero wiz-only-1">
+      <h1>See what your field can't show you</h1>
+      <p class="lead">Satellites and 25 years of weather on your exact field, turned into one clear answer: what to sow next.</p>
+      <ul class="hero-pills"><li>Your field from space</li><li>24 seasons tested</li><li>What it earns</li><li>Hail, frost &amp; pest warnings</li></ul>
     </section>
 
+    <nav class="stepper" id="stepper" aria-label="Steps">
+      <button type="button" class="st" data-go="1"><span class="dot">1</span><span class="lbl">Your field</span></button>
+      <span class="line"></span>
+      <button type="button" class="st" data-go="2"><span class="dot">2</span><span class="lbl">What you grew</span></button>
+      <span class="line"></span>
+      <button type="button" class="st" data-go="3"><span class="dot">3</span><span class="lbl">What matters</span></button>
+    </nav>
+
     <!-- STEP 1 -->
-    <section class="card step">
-      <div class="step-head"><span class="num">1</span><div><h2>Where is your field?</h2><p class="muted">Search for your village, then draw your field with the ⬠ tool on the left of the map, or click on it to start from a square you can resize.</p></div></div>
+    <section class="card wiz-step" data-step="1">
+      <p class="step-count">Step 1 of 3</p>
+      <h2 class="wiz-title">Where is your field?</h2>
+      <p class="muted wiz-sub">Search for your village, then click on your field.</p>
 
       <form id="searchForm" class="search" autocomplete="off">
         <div class="search-box">
@@ -45,7 +49,7 @@
       </form>
 
       <div id="recentWrap" hidden>
-        <p class="small-label">Recent fields</p>
+        <p class="small-label">Your recent fields</p>
         <div id="recent" class="recent"></div>
       </div>
 
@@ -54,77 +58,80 @@
         <div id="mapHint" class="map-hint">Click on your field to select it</div>
       </div>
 
-      <div id="fieldCard" class="field-card empty">
-        <div class="field-icon">📍</div>
-        <div class="field-info">
-          <b id="fieldName">No field selected yet</b>
-          <span id="fieldMeta" class="muted">Click on the map, or use the ▭ and ⬠ tools on the left to draw your field.</span>
-          <span id="fieldNote" class="note"></span>
+      <div class="wiz-foot">
+        <div id="fieldCard" class="field-card empty">
+                    <div class="field-info">
+            <b id="fieldName">No field selected yet</b>
+            <span id="fieldMeta" class="muted">Click on the map, or draw your field with the tools on the left.</span>
+            <span id="fieldNote" class="note"></span>
+          </div>
+          <button id="clearField" class="btn ghost" hidden>Change</button>
         </div>
-        <button id="clearField" class="btn ghost" hidden>Change field</button>
+        <button type="button" class="btn primary next" id="next1" disabled>Next →</button>
       </div>
     </section>
 
     <!-- STEP 2 -->
-    <section class="card step">
-      <div class="step-head"><span class="num">2</span><div><h2>Tell us about you</h2><p class="muted">So we can tailor the advice to your situation.</p></div></div>
+    <section class="card wiz-step" data-step="2" hidden>
+      <p class="step-count">Step 2 of 3</p>
+      <h2 class="wiz-title">What did you grow here?</h2>
+      <p class="muted wiz-sub">So we can compare it with better options.</p>
 
-      <p class="q">Your situation</p>
-      <div class="options two">
+      <div class="options two big-choice">
         <label class="option"><input type="radio" name="situation" value="farm" checked>
-          <span><b>I already farm this field</b><small>Tell us what you grew, we compare it with better options</small></span></label>
+          <span><b>I already farm this field</b><small>Tell us the last few crops</small></span></label>
         <label class="option"><input type="radio" name="situation" value="new">
-          <span><b>I'm starting out / new land</b><small>No history needed, we suggest where to begin</small></span></label>
+          <span><b>New land / starting out</b><small>No history needed</small></span></label>
       </div>
 
       <div id="historyBox" class="history">
-        <p class="q">What did you grow on this field?</p>
-        <p class="muted small history-help">Start with this year and go back. Fill in what you remember: one season is enough, empty years are fine.</p>
-        <div class="presets"><span class="muted">Common patterns:</span>
+        <div class="presets"><span class="muted">Quick fill:</span>
           <button type="button" class="chip-btn" data-preset="Wheat,Sunflower">Wheat ↔ Sunflower</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Corn">Wheat ↔ Corn</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Rapeseed,Sunflower">Wheat › Rapeseed › Sunflower</button>
           <button type="button" class="chip-btn" data-preset="Wheat,Wheat">Only wheat</button>
           <button type="button" class="link-btn" data-preset="">Clear all</button>
         </div>
+        <p class="muted small history-help">Or type them in, newest first. One year is enough.</p>
         <div id="historyRows" class="history-rows"></div>
         <datalist id="cropList"></datalist>
-        <p id="historyError" class="error" hidden>Add at least one season, or choose "I'm starting out".</p>
+        <p id="historyError" class="error" hidden>Add at least one season, or choose "New land".</p>
       </div>
 
-      <p class="q">What do you want to know?</p>
-      <div class="options two">
-        <label class="option"><input type="radio" name="mode" value="recommend" checked>
-          <span><b>Recommend what to plant</b><small>Compare rotation strategies for my field</small></span></label>
-        <label class="option"><input type="radio" name="mode" value="crop">
-          <span><b>Can I grow a specific crop?</b><small>Check one crop against my field's data</small></span></label>
+      <div class="wiz-foot">
+        <button type="button" class="btn ghost back" data-go="1">← Back</button>
+        <button type="button" class="btn primary next" id="next2">Next →</button>
       </div>
-      <label id="cropPick" class="field-select" hidden>Which crop? <select id="focusCrop"></select></label>
+    </section>
 
-      <p class="q">What matters most to you? <small>(pick one or more)</small></p>
+    <!-- STEP 3 -->
+    <section class="card wiz-step" data-step="3" hidden>
+      <p class="step-count">Step 3 of 3</p>
+      <h2 class="wiz-title">What matters most to you?</h2>
+      <p class="muted wiz-sub">Pick one or more. We rank the options by these.</p>
+      <div id="wizSummary" class="wiz-summary"></div>
+
       <div class="priorities main" id="prioritiesMain"></div>
       <details class="more-prio"><summary>More priorities</summary><div class="priorities" id="priorities"></div></details>
-    </section>
 
-    <div class="go">
-      <div id="preCheck" class="precheck" hidden></div>
-      <button id="analyze" class="btn primary" disabled>Analyse my field</button>
-      <p id="goHint" class="muted">Select a field on the map first.</p>
-      <p class="muted small">Free, no account. Your field's location is only used to fetch public satellite and climate data. Usually takes 5–60 seconds (faster for fields checked before).</p>
-    </div>
-
-    <section class="about card" id="about">
-      <div class="about-head">
-        <p class="eyebrow">Who we are</p>
-        <h2>Space data that actually reaches the farmer</h2>
-        <p class="muted">FieldShift is built by a Bulgarian team at the NASA Space Apps Challenge 2026 (Sofia).</p>
+      <div class="crop-mode">
+        <label class="crop-toggle"><input type="checkbox" id="cropMode"> I only want to check if one crop can grow here</label>
+        <label id="cropPick" class="field-select" hidden>Which crop? <select id="focusCrop"></select></label>
+        <span hidden><input type="radio" name="mode" value="recommend" checked><input type="radio" name="mode" value="crop"></span>
       </div>
-      <div class="about-grid">
-        <div><h3>😟 The problem</h3><p>NASA and ESA collect enormous amounts of free data about every field on Earth: rain, heat, soil moisture, crop growth. Almost none of it reaches the farmer in a form he can use. Decisions are made from memory, while droughts get more frequent.</p></div>
-        <div><h3>🛰️ What we do</h3><p>We read 25 years of NASA climate data, 5 years of Sentinel-2 satellite images of <i>your</i> field, the soil and the slope, plus the weather forecast, and turn them into plain answers: what to sow, what it earns in a normal and a bad year, and what to watch out for.</p></div>
-        <div><h3>✅ How it helps</h3><p>You make an informed decision about your own fields: compare your rotation with 2 better options, get warned about hail, frost, drought and pests in time, and see the evidence behind every number. Free, no account.</p></div>
+
+      <div class="go">
+        <div id="preCheck" class="precheck" hidden></div>
+        <button id="analyze" class="btn primary big" disabled>Analyse my field</button>
+        <p id="goHint" class="muted">Select a field on the map first.</p>
+        <p class="muted small">Free, no account. Usually takes 5–60 seconds.</p>
+      </div>
+      <div class="wiz-foot only-back">
+        <button type="button" class="btn ghost back" data-go="2">← Back</button>
       </div>
     </section>
+
+    <p class="made-by wiz-only-1">Made by a Bulgarian team at NASA Space Apps 2026 · Free, no account</p>
   </div>
 
   <!-- ================= PROGRESS ================= -->
@@ -150,21 +157,21 @@
     </header>
     <div class="resultbar">
       <div class="resultbar-row">
-        <div class="place"><button id="back" class="btn ghost">← Change field</button><div><b id="placeName"></b><p class="muted" id="coords"></p></div><a href="#checksSec" id="checksBadge" class="checks-badge" hidden></a></div>
+        <div class="place"><button id="back" class="btn ghost">← Change field</button><div><b id="placeName"></b><p class="muted" id="coords"></p></div></div>
         <div class="bar-right">
           <div class="view-switch" role="group" aria-label="How much detail">
-            <button class="view-btn" data-view="simple">👀 Simple</button><button class="view-btn" data-view="detailed">🔬 Detailed</button>
+            <button class="view-btn" data-view="simple">Simple</button><button class="view-btn" data-view="detailed">Detailed</button>
           </div>
           <div class="units">Areas in <button class="unit-btn" data-unit="dka">decares</button><button class="unit-btn" data-unit="ha">hectares</button></div>
         </div>
       </div>
-      <nav class="section-nav" id="sectionNav">
-        <a href="#answer">Suggestion</a><a href="#alertsSec">Alerts</a><a href="#optionsSec">3 strategies</a><a href="#predictSec" class="detail-only">Season risk</a><a href="#pestsSec">This season</a><a href="#monitorSec" class="simple-only">Phone alerts</a><a href="#insightsSec" class="detail-only">Your field</a><a href="#cropsSec" class="detail-only">Crops</a><a href="#chartsSec" class="detail-only">Charts</a><a href="#guideSec" class="detail-only">How to read this</a><a href="#methodSec" class="detail-only">Method</a>
+      <nav class="section-nav detail-only" id="sectionNav">
+        <a href="#answer">Suggestion</a><a href="#alertsSec">Alerts</a><a href="#insightsSec">Your field</a><a href="#optionsSec">3 strategies</a><a href="#predictSec">Season risk</a><a href="#pestsSec">Pests &amp; fertilizer</a><a href="#monitorSec">Phone alerts</a><a href="#cropsSec">Crops</a><a href="#chartsSec">Charts</a><a href="#guideSec">How to read this</a><a href="#methodSec">Method</a>
       </nav>
     </div>
-    <p class="history-line" id="historyLabel"></p>
+    <p class="history-line detail-only" id="historyLabel"></p>
 
-    <div class="agronomist" role="note"><span>🧑‍🌾</span><p><b>FieldShift helps you decide. It does not replace your local agronomist.</b></p></div>
+    <div class="agronomist" role="note"><p>This is advice. Always check with your agronomist.</p></div>
 
 
     <section id="answer" class="card answer"></section>
@@ -192,10 +199,13 @@
     <section id="satHistory" class="card detail-only" hidden></section>
 
     <section class="card" id="optionsSec">
-      <h2>3 strategies compared</h2>
-      <p class="muted">Your current rotation (the baseline) and 2 new strategies, each checked against every season of the last 24 years of weather on this field.</p>
-      <p class="prio-line" id="prioLine"></p>
-      <div id="strategies" class="strategies"></div>
+      <div id="optionsSimple" class="simple-only"></div>
+      <div class="detail-only">
+        <h2>3 strategies compared</h2>
+        <p class="muted">Your current rotation (the baseline) and 2 new strategies, each checked against every season of the last 24 years of weather on this field.</p>
+        <p class="prio-line" id="prioLine"></p>
+        <div id="strategies" class="strategies"></div>
+      </div>
       <div class="detail-only">
         <h3 class="sub">Side by side</h3>
         <div class="table-wrap"><table id="compare" class="compare"></table></div>
@@ -213,18 +223,19 @@
     <section id="pestsSec" class="card"></section>
 
     <section id="monitorSec" class="card">
-      <h2>📱 Get alerts on your phone</h2>
-      <p class="muted">We check your field every 6 hours and send an SMS (and a call if it's urgent).</p>
+      <h2>Warnings on your phone</h2>
+      <p class="muted">We send you a text message when hail, frost, heavy rain or pests are coming.</p>
       <form id="monitorForm" class="monitor-form" autocomplete="on">
         <label>Mobile number<input id="monPhone" type="tel" inputmode="tel" placeholder="0888 123 456" autocomplete="tel" required></label>
-        <label>Send me<select id="monLevel">
+        <label class="detail-only">Send me<select id="monLevel">
           <option value="urgent">only URGENT (call + SMS)</option>
           <option value="warning" selected>URGENT and WARNINGS</option>
           <option value="advice">also RECOMMENDATIONS</option>
         </select></label>
-        <button class="btn primary small-btn" type="submit">Turn on alerts</button>
+        <button class="btn primary small-btn" type="submit">Send me warnings</button>
       </form>
       <p id="monStatus" class="muted" role="status"></p>
+      <button type="button" class="more-link simple-only" data-goto="monitorSec">How warnings reach you without signal ›</button>
       <div id="monResult"></div>
       <details class="adjust-wrap detail-only"><summary>No signal in the field? How alerts still reach you</summary>
         <ul>
@@ -260,9 +271,7 @@
       </div>
     </section>
 
-    <div class="simple-only more-detail"><button class="btn" data-view="detailed">🔬 Show the detailed analysis</button><p class="muted">All data, charts, the season-risk model and the science behind every number.</p></div>
-
-    <section id="checksSec" class="card detail-only"></section>
+    <div class="simple-only more-detail"><button class="btn" data-view="detailed">Show the detailed analysis</button><p class="muted">Charts, all the numbers and how we got them.</p></div>
 
     <section id="guideSec" class="card detail-only"></section>
 
@@ -284,7 +293,7 @@
       <p><b>Comparing options:</b> profit uses each year's real outcome (bad season = half yield) plus nitrogen left by legumes; a crop after itself loses ~15%. "Better / About the same / Worse fit" combines what you said matters to you.</p>
       <p><b>Season risk (machine learning):</b> analog-year k-nearest neighbours. For each of the 24 past seasons we measure the same things we can measure today (rain before sowing, rain since October including this month's rain and the 7-day forecast, temperature). The 13 past seasons most similar to this one vote, closer ones count more, mixed with the crop's long-term average so a few years can't give 0% or 100%. Leave-one-out validation predicts every past season from the others; the score is shown next to the result, compared with simply using the long-term average.</p>
       <p><b>Alerts:</b> the 7-day forecast (ECMWF and DWD ICON models) is checked for hail (thunderstorm with hail codes), heavy rain and floods, frost, heat, drought and storms; the latest Sentinel-2 image is compared with the same weeks in earlier years to spot a sudden drop in greenness (pests, disease, nutrient shortage or drought); and a pest model checks each crop's main pests against the forecast temperature and rain. Levels: URGENT (call + SMS), WARNING (SMS), RECOMMENDATION and INFO (in the app).</p>
-      <p><b>Validation:</b> every data source is checked for missing or impossible values before it's used or saved in the cache, crop names are spell-checked and looked up in the GBIF plant database, and the results are checked for consistency (shown in "Data and result checks").</p>
+      <p><b>Validation:</b> every data source is checked for missing or impossible values before it's used or saved in the cache, crop names are spell-checked and looked up in the GBIF plant database, and the results are checked for consistency.</p>
     </details>
     <p class="disclaimer">Your field's location is only used to fetch public satellite and climate data. No account, no names; recent fields are saved only in your browser. </p>
   </div>
